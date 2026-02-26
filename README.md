@@ -1,5 +1,10 @@
 # MONOPROLOG
 
+- Sergio Bardavio
+- Ángel Jimenez
+- Karim Ahmed
+- Diego Martínez
+
 ## Entregas
 
 ### Semanas 1 y 2
