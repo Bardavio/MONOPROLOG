@@ -1,59 +1,80 @@
-% ------ TABLERO ------
-% Representación del tablero de Monopoly
+% ============================================================
+%  PARTE DE: Ángel Jiménez
+%  Módulo: Tablero + Dado simulado
+%  Mejoras respecto a la versión inicial:
+%    1. Dado doble (dos secuencias independientes)
+%    2. Casillas simples con estructura casilla(Tipo, Descripcion)
+%       AVISO AL EQUIPO: las casillas simples ya no son átomos sueltos.
+%       Para hacer pattern matching usar:
+%         casilla(salida, _)
+%         casilla(carta, _)
+%         casilla(chance, _)
+%         casilla(carcel, _)
+%         casilla(parking, _)
+%         casilla(ir_a_carcel, _)
+%         casilla(impuesto, Cantidad)   <- Cantidad es el número
+%       Las propiedades, estaciones y servicios NO cambian.
+% ============================================================
 
+% ------ TABLERO ------
+% Casillas simples usan: casilla(Tipo, Descripcion)
+% Casillas con propietario siguen igual que antes:
+%   propiedad(Nombre, Precio, Color)
+%   estacion(Nombre)
+%   servicio(Nombre)
 tablero(Tablero) :-
     Tablero = [
-        salida,
-        propiedad(marron1, 60, marron),
-        carta,
-        propiedad(marron2, 60, marron),
-        impuesto(200),
+        casilla(salida,      'Cobras $200 al pasar'),
+        propiedad(marron1,   60,  marron),
+        casilla(carta,       'Carta de Comunidad'),
+        propiedad(marron2,   60,  marron),
+        casilla(impuesto,    200),
         estacion(norte),
-        propiedad(celeste1, 100, celeste),
-        chance,
-        propiedad(celeste2, 100, celeste),
-        propiedad(celeste3, 120, celeste),
-        carcel,
-        propiedad(rosa1, 140, rosa),
+        propiedad(celeste1,  100, celeste),
+        casilla(chance,      'Carta de Suerte'),
+        propiedad(celeste2,  100, celeste),
+        propiedad(celeste3,  120, celeste),
+        casilla(carcel,      'Solo de visita'),
+        propiedad(rosa1,     140, rosa),
         servicio(electrica),
-        propiedad(rosa2, 140, rosa),
-        propiedad(rosa3, 160, rosa),
+        propiedad(rosa2,     140, rosa),
+        propiedad(rosa3,     160, rosa),
         estacion(sur),
-        propiedad(naranja1, 180, naranja),
-        carta,
-        propiedad(naranja2, 180, naranja),
-        propiedad(naranja3, 200, naranja),
-        parking,
-        propiedad(rojo1, 220, rojo),
-        chance,
-        propiedad(rojo2, 220, rojo),
-        propiedad(rojo3, 240, rojo),
+        propiedad(naranja1,  180, naranja),
+        casilla(carta,       'Carta de Comunidad'),
+        propiedad(naranja2,  180, naranja),
+        propiedad(naranja3,  200, naranja),
+        casilla(parking,     'Parking gratuito'),
+        propiedad(rojo1,     220, rojo),
+        casilla(chance,      'Carta de Suerte'),
+        propiedad(rojo2,     220, rojo),
+        propiedad(rojo3,     240, rojo),
         estacion(este),
         propiedad(amarillo1, 260, amarillo),
         propiedad(amarillo2, 260, amarillo),
         servicio(agua),
         propiedad(amarillo3, 280, amarillo),
-        ir_a_carcel,
-        propiedad(verde1, 300, verde),
-        propiedad(verde2, 300, verde),
-        carta,
-        propiedad(verde3, 320, verde),
+        casilla(ir_a_carcel, 'Ve directamente a la carcel'),
+        propiedad(verde1,    300, verde),
+        propiedad(verde2,    300, verde),
+        casilla(carta,       'Carta de Comunidad'),
+        propiedad(verde3,    320, verde),
         estacion(oeste),
-        chance,
-        propiedad(azul1, 350, azul),
-        impuesto(100),
-        propiedad(azul2, 400, azul)
+        casilla(chance,      'Carta de Suerte'),
+        propiedad(azul1,     350, azul),
+        casilla(impuesto,    100),
+        propiedad(azul2,     400, azul)
     ].
 
-% Obtiene la casilla en una posición dada (0-39)
-casilla(Indice, Casilla) :-
+% casilla_en(+Indice, -Casilla)
+% Obtiene la casilla en una posición dada (0-39).
+% Se llama casilla_en para no colisionar con el functor casilla/2
+% que ahora se usa dentro del tablero.
+casilla_en(Indice, Casilla) :-
     tablero(T),
     nth0(Indice, T, Casilla).
 
-
 % ------ ESTADO ------
-
-% Representación del estado del juego
 % estado(Jugadores, Tablero, Turno)
 estado_inicial(estado(Jugadores, Tablero, 0)) :-
     tablero(Tablero),
@@ -62,29 +83,89 @@ estado_inicial(estado(Jugadores, Tablero, 0)) :-
         jugador(bob,   0, 1500, [])
     ].
 
+% ============================================================
+% ------ DADO DOBLE SIMULADO ------
+% MEJORA 1: En Monopoly real se lanzan 2 dados.
+% Como random/1 no funciona en Prolog estándar, se usan
+% dos listas predefinidas independientes.
+% El índice se determina por el turno actual (mod longitud),
+% de forma que la secuencia es circular y determinista.
+% ============================================================
 
-% ------ MOVIMIENTO ------
+secuencia_dado1([3, 5, 2, 6, 1, 4, 2, 5, 3, 1, 4, 6, 2, 3, 5, 1, 4, 2, 6, 3]).
+secuencia_dado2([2, 4, 6, 1, 3, 5, 1, 3, 6, 2, 5, 4, 3, 6, 2, 4, 1, 5, 3, 2]).
 
-% Aleatoriedad simulada con una secuencia predefinida de tiradas de dado
-secuencia_dado([3, 5, 2, 6, 1, 4, 2, 5, 3, 1, 4, 6, 2, 3, 5, 1, 4, 2, 6, 3]).
-
-% Obtiene el valor del dado basado en el turno actual
-valor_dado(N, Valor) :-
-    secuencia_dado(Tiradas),
+valor_dado1(Turno, Valor) :-
+    secuencia_dado1(Tiradas),
     length(Tiradas, Len),
-    Idx is N mod Len,
+    Idx is Turno mod Len,
     nth0(Idx, Tiradas, Valor).
 
-% Calcula la nueva posición del jugador después de una tirada
+valor_dado2(Turno, Valor) :-
+    secuencia_dado2(Tiradas),
+    length(Tiradas, Len),
+    Idx is Turno mod Len,
+    nth0(Idx, Tiradas, Valor).
+
+% Suma de ambos dados
+valor_dados(Turno, Total) :-
+    valor_dado1(Turno, V1),
+    valor_dado2(Turno, V2),
+    Total is V1 + V2.
+
+% Dobles: ambos dados igual (útil para turno extra)
+es_doble(Turno) :-
+    valor_dado1(Turno, V),
+    valor_dado2(Turno, V).
+
+% ============================================================
+% ------ ACCIÓN DE CASILLAS SIMPLES ------
+% MEJORA 2: gracias a la estructura casilla(Tipo, Dato)
+% el pattern matching es uniforme y extensible.
+%
+% aplicar_casilla(+Casilla, +Jugador, -JugadorResultante)
+% ============================================================
+
+% Salida: no hace nada al caer (el bonus $200 se da al PASAR)
+aplicar_casilla(casilla(salida, _), Jugador, Jugador).
+
+% Cárcel: solo de visita
+aplicar_casilla(casilla(carcel, _), Jugador, Jugador).
+
+% Parking: casilla de descanso
+aplicar_casilla(casilla(parking, _), Jugador, Jugador).
+
+% Carta de comunidad: pendiente (gestión de cartas)
+aplicar_casilla(casilla(carta, _), Jugador, Jugador).
+
+% Chance: pendiente (gestión de cartas)
+aplicar_casilla(casilla(chance, _), Jugador, Jugador).
+
+% Ir a la cárcel: mueve al jugador a posición 10
+aplicar_casilla(casilla(ir_a_carcel, _),
+                jugador(N, _, Dinero, Props),
+                jugador(N, 10, Dinero, Props)).
+
+% Impuesto: resta la cantidad indicada
+aplicar_casilla(casilla(impuesto, Cantidad),
+                jugador(N, Pos, Dinero, Props),
+                jugador(N, Pos, NuevoDinero, Props)) :-
+    NuevoDinero is Dinero - Cantidad.
+
+% Las casillas con propietario las gestionan las Reglas 0 y 1 del equipo
+aplicar_casilla(propiedad(_, _, _), Jugador, Jugador).
+aplicar_casilla(estacion(_),        Jugador, Jugador).
+aplicar_casilla(servicio(_),        Jugador, Jugador).
+
+% ------ MOVIMIENTO ------
 nueva_posicion(Pos, Tirada, NuevaPos) :-
     NuevaPos is (Pos + Tirada) mod 40.
 
-% Verifica si el jugador pasa por la salida, lo que le otorga $200
 pasa_por_salida(Pos, Tirada) :-
     Pos + Tirada >= 40.
 
-% Mueve al jugador y actualiza su dinero si pasa por la salida
-mover_jugador(jugador(N, Pos, Dinero, Props), Tirada, NuevoJugador) :-
+mover_jugador(jugador(N, Pos, Dinero, Props), Turno, NuevoJugador) :-
+    valor_dados(Turno, Tirada),
     nueva_posicion(Pos, Tirada, NuevaPos),
     (   pasa_por_salida(Pos, Tirada)
     ->  NuevoDinero is Dinero + 200
@@ -92,29 +173,32 @@ mover_jugador(jugador(N, Pos, Dinero, Props), Tirada, NuevoJugador) :-
     ),
     NuevoJugador = jugador(N, NuevaPos, NuevoDinero, Props).
 
-% Actualiza la información de un jugador en la lista de jugadores
 actualizar_jugador(Nuevo, [jugador(NombreJ,_,_,_)|R], [Nuevo|R]) :-
     Nuevo = jugador(NombreJ,_,_,_), !.
 actualizar_jugador(Nuevo, [J|R], [J|RA]) :-
     actualizar_jugador(Nuevo, R, RA).
 
 % ------ CONTROL DE TURNO ------
-
-% Determina el jugador actual basado en el turno
 jugador_actual(Jugadores, Turno, Jugador) :-
     length(Jugadores, N),
     Idx is Turno mod N,
     nth0(Idx, Jugadores, Jugador).
 
-% Avanza al siguiente turno
 siguiente_turno(Turno, Nuevo) :-
     Nuevo is Turno + 1.
 
-% Jugar turno completo
+% Jugar turno completo:
+% 1. Jugador actual
+% 2. Mover (2 dados + paso por salida)
+% 3. Aplicar acción de la casilla
+% 4. Actualizar jugadores
+% 5. Avanzar turno
 jugarTurno(estado(Jugadores, Tablero, Turno),
            estado(NuevosJugadores, Tablero, NuevoTurno)) :-
     jugador_actual(Jugadores, Turno, Jugador),
-    valor_dado(Turno, Tirada),
-    mover_jugador(Jugador, Tirada, JugadorMovido),
-    actualizar_jugador(JugadorMovido, Jugadores, NuevosJugadores),
+    mover_jugador(Jugador, Turno, JugadorMovido),
+    JugadorMovido = jugador(_, NuevaPos, _, _),
+    nth0(NuevaPos, Tablero, Casilla),
+    aplicar_casilla(Casilla, JugadorMovido, JugadorFinal),
+    actualizar_jugador(JugadorFinal, Jugadores, NuevosJugadores),
     siguiente_turno(Turno, NuevoTurno).
