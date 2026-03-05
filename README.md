@@ -7,17 +7,15 @@
 
 ## Entregas
 
-### Semanas 1 y 2
-
 #### Tablero
 
 - [x] Tablero como lista de 40 casillas
-- [x] Casillas representadas como terminos `propiedad(Nombre, Precio, Color)`, `impuesto(Cantidad)`...
-- [x] Se debe poder accederse a una casilla por índice.
+- [x] Casillas representadas como terminos `propiedad(Nombre, Precio, Color, Dueno)`, `casilla(Tipo, Desc)`, `estacion(Nombre, Dueno)`, `servicio(Nombre, Dueno)`
+- [x] Se debe poder accederse a una casilla por índice (`casilla_en/2`)
 
 #### Estado
 
-- [x] `estado(Jugadores, Tablero, Turno)`
+- [x] Estado global con `nb_setval(jugadores, ...)` + `nb_setval(turno_actual, ...)`
 - [x] `jugador(Nombre, Posicion, Dinero, Propiedades)`
 - [x] Lista de jugadores correctamente estructurada.
 
@@ -26,40 +24,44 @@
 - [x] Dado simulado con lista predefinida.
 - [x] Nueva posición con módulo 40.
 - [x] Si pasa por salida, suma dinero.
-- [x] Actualización correcta del jugador dentro de la lista.
+- [x] Actualización del jugador con `nb_setarg/3` (mutación O(1)).
 
 #### Control de turno
 
 - [x] Cambio de turno circular
-- [x] Predicado tipo `jugarTurno/2`
-
-### Semanas 3 y 4
+- [x] `jugar_turno/0`, `ejecutar_turno/2`, `jugar_turnos/1`
 
 #### Reglas del Juego
 
-- [ ] Regla 0 – Compra
-- [ ] Detectar propiedad sin dueño
-- [ ] Verificar dinero suficiente
-- [ ] Restar dinero al jugador
-- [ ] Añadir propiedad a la lista del jugador
-- [ ] Regla 1 – Alquiler
-- [ ] Detectar propiedad con dueño
-- [ ] Transferir dinero al propietario
-- [ ] Actualizar ambos jugadores en la lista
+- [x] Regla 0 – Compra
+  - [x] Detectar propiedad sin dueño (`propiedad_libre/1`)
+  - [x] Verificar dinero suficiente
+  - [x] Restar dinero al jugador
+  - [x] Añadir propiedad a la lista del jugador
+- [x] Regla 1 – Alquiler
+  - [x] Detectar propiedad con dueño (`dueno_de/2`, `dueno_estacion/2`, `dueno_servicio/2`)
+  - [x] Transferir dinero al propietario
+  - [x] Actualizar ambos jugadores con `nb_setarg`
 - [ ] Regla 2 – Monopolio
-- [ ] Detectar si un jugador posee todas las propiedades de un color
-- [ ] Predicado de verificación de subconjunto
+  - [ ] Detectar si un jugador posee todas las propiedades de un color
+  - [ ] Predicado de verificación de subconjunto
 - [ ] Regla 3 – Bancarrota
-- [ ] Detectar dinero negativo
-- [ ] Eliminar jugador o liquidar propiedades
+  - [ ] Detectar dinero negativo
+  - [ ] Eliminar jugador o liquidar propiedades
 
 #### Aplicación de reglas
 
-- [ ] Predicado `aplicarReglas/2`
-- [ ] Aplicación encadenada de reglas en orden
-- [ ] Turno completo con efectos económicos
+- [x] Predicado `aplicar_casilla/2`
+- [x] Aplicación encadenada de reglas en orden (cortes + fallthrough)
+- [x] Turno completo con efectos económicos
 
-### Semanas 5 y 6
+#### Mejoras implementadas
+
+- [x] Estado global mutable con `nb_setval`/`nb_getval` (Sergio)
+- [x] Mutación O(1) con `nb_setarg` (Sergio)
+- [x] Dado doble con secuencias predefinidas (Ángel)
+- [x] Propiedades/estaciones/servicios con dueño (Diego)
+- [x] Reglas no independientes: dado doble activa turno extra
 
 #### Simulación automática
 
