@@ -367,3 +367,6 @@ dueno_servicio(Nombre, JugadorDueno) :-
 
 precio_estacion(200).
 precio_servicio(150).
+
+alquiler(Precio, Alquiler) :-
+    Alquiler is Precio // 10.
