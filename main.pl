@@ -299,27 +299,32 @@ jugar_turnos(0) :- !.
 jugar_turnos(N) :-
     N > 0, jugar_turno, N1 is N - 1, jugar_turnos(N1).
 
-% --- Consultas globales (Diego) ---
+% --- Consultas globales ---
 
 % props_de_jugador(+Nombre, -Props)
 props_de_jugador(Nombre, Props) :-
     nb_getval(jugadores, Jugadores),
     member(jugador(Nombre, _, _, Props), Jugadores).
 
-% propiedades_de_dueno(+Dueno, -ListaNombres)
-propiedades_de_dueno(Dueno, ListaNombres) :-
-    tablero(T),
-    findall(Nombre, member(propiedad(Nombre, _, _, Dueno), T), ListaNombres).
+% propiedades_de_dueno(+Dueno, -Lista)
+% TODO: Deberiamos definir la clausula propiedad/4 de forma que solo incluya propiedades, y no estaciones ni servicios, para evitar este filtro extra
+propiedades_de_dueno(Dueno, Lista) :-
+    nb_getval(jugadores, Jugadores),
+    member(jugador(Dueno, _, _, Props), Jugadores),
+    % filtrar solo propiedades (excluye estaciones y servicios)
+    include([X]>>(X \= estacion(_), X \= servicio(_)), Props, Lista).
 
 % estaciones_de_dueno(+Dueno, -Lista)
 estaciones_de_dueno(Dueno, Lista) :-
-    tablero(T),
-    findall(Nombre, member(estacion(Nombre, Dueno), T), Lista).
+    nb_getval(jugadores, Jugadores),
+    member(jugador(Dueno, _, _, Props), Jugadores),
+    findall(N, member(estacion(N), Props), Lista).
 
 % servicios_de_dueno(+Dueno, -Lista)
 servicios_de_dueno(Dueno, Lista) :-
-    tablero(T),
-    findall(Nombre, member(servicio(Nombre, Dueno), T), Lista).
+    nb_getval(jugadores, Jugadores),
+    member(jugador(Dueno, _, _, Props), Jugadores),
+    findall(N, member(servicio(N), Props), Lista).
 
 % --- Reglas de propiedad ---
 
@@ -358,6 +363,7 @@ dueno_servicio(Nombre, JugadorDueno) :-
     member(JugadorDueno, Jugadores),
     JugadorDueno = jugador(_, _, _, Props),
     member(servicio(Nombre), Props).
+
 
 precio_estacion(200).
 precio_servicio(150).
