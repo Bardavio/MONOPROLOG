@@ -1,7 +1,31 @@
+% ============================================================
+%  PARTE DE: Ángel Jiménez, Sergio Bardavio y Diego Martínez
+%  Módulo: Tablero + Dado doble + Estado Global Eficiente + Dueños
+%  Mejoras integradas:
+%    1. Dado doble y casillas estructuradas (Ángel)
+%    2. Variables globales mutables (nb_setval) (Sergio)
+%    3. Mutación directa (nb_setarg) para eficiencia O(1) (Sergio)
+%    4. Sistema de turnos interactivo (Sergio)
+%    5. Estructura de propiedades con dueño/libre y consultas (Diego)
+% ============================================================
 
+% ============================================================
+% ------ ESTADO GLOBAL EFICIENTE (SERGIO) ------
+% ============================================================
+iniciar_juego :-
+    nb_setval(jugadores, [
+        jugador(alice, 0, 1500, []),
+        jugador(bob,   0, 1500, [])
+    ]),
+    nb_setval(turno_actual, 0),
+    writeln('================================================'),
+    writeln('¡Partida iniciada con eficiencia maxima!'),
+    writeln('Memoria lista. Usa "jugar_turno." para avanzar.'),
+    writeln('================================================').
 
-% ------ TABLERO ------
-
+% ============================================================
+% ------ TABLERO CON DUEÑOS (DIEGO + ÁNGEL) ------
+% ============================================================
 tablero(Tablero) :-
     Tablero = [
         casilla(salida,      'Cobras $200 al pasar'),
@@ -46,32 +70,13 @@ tablero(Tablero) :-
         propiedad(azul2,     400, azul, libre)
     ].
 
-% casilla_en(+Indice, -Casilla)
-% Obtiene la casilla en una posición dada (0-39).
-% Se llama casilla_en para no colisionar con el functor casilla/2
-% que ahora se usa dentro del tablero.
 casilla_en(Indice, Casilla) :-
     tablero(T),
     nth0(Indice, T, Casilla).
 
-% ------ ESTADO ------
-% estado(Jugadores, Tablero, Turno)
-estado_inicial(estado(Jugadores, Tablero, 0)) :-
-    tablero(Tablero),
-    Jugadores = [
-        jugador(alice, 0, 1500, []),
-        jugador(bob,   0, 1500, [])
-    ].
-
 % ============================================================
-% ------ DADO DOBLE SIMULADO ------
-% MEJORA 1: En Monopoly real se lanzan 2 dados.
-% Como random/1 no funciona en Prolog estándar, se usan
-% dos listas predefinidas independientes.
-% El índice se determina por el turno actual (mod longitud),
-% de forma que la secuencia es circular y determinista.
+% ------ DADO DOBLE SIMULADO (ÁNGEL) ------
 % ============================================================
-
 secuencia_dado1([3, 5, 2, 6, 1, 4, 2, 5, 3, 1, 4, 6, 2, 3, 5, 1, 4, 2, 6, 3]).
 secuencia_dado2([2, 4, 6, 1, 3, 5, 1, 3, 6, 2, 5, 4, 3, 6, 2, 4, 1, 5, 3, 2]).
 
@@ -87,132 +92,112 @@ valor_dado2(Turno, Valor) :-
     Idx is Turno mod Len,
     nth0(Idx, Tiradas, Valor).
 
-% Suma de ambos dados
 valor_dados(Turno, Total) :-
     valor_dado1(Turno, V1),
     valor_dado2(Turno, V2),
     Total is V1 + V2.
 
-% Dobles: ambos dados igual (útil para turno extra)
 es_doble(Turno) :-
     valor_dado1(Turno, V),
     valor_dado2(Turno, V).
 
 % ============================================================
-% ------ ACCIÓN DE CASILLAS SIMPLES ------
-% MEJORA 2: gracias a la estructura casilla(Tipo, Dato)
-% el pattern matching es uniforme y extensible.
-%
-% aplicar_casilla(+Casilla, +Jugador, -JugadorResultante)
+% ------ MOVIMIENTO EFICIENTE (SERGIO) ------
 % ============================================================
-
-% Salida: no hace nada al caer (el bonus $200 se da al PASAR)
-aplicar_casilla(casilla(salida, _), Jugador, Jugador).
-
-% Cárcel: solo de visita
-aplicar_casilla(casilla(carcel, _), Jugador, Jugador).
-
-% Parking: casilla de descanso
-aplicar_casilla(casilla(parking, _), Jugador, Jugador).
-
-% Carta de comunidad: pendiente (gestión de cartas)
-aplicar_casilla(casilla(carta, _), Jugador, Jugador).
-
-% Chance: pendiente (gestión de cartas)
-aplicar_casilla(casilla(chance, _), Jugador, Jugador).
-
-% Ir a la cárcel: mueve al jugador a posición 10
-aplicar_casilla(casilla(ir_a_carcel, _),
-                jugador(N, _, Dinero, Props),
-                jugador(N, 10, Dinero, Props)).
-
-% Impuesto: resta la cantidad indicada
-aplicar_casilla(casilla(impuesto, Cantidad),
-                jugador(N, Pos, Dinero, Props),
-                jugador(N, Pos, NuevoDinero, Props)) :-
-    NuevoDinero is Dinero - Cantidad.
-
-% Las casillas con propietario las gestionan las Reglas 0 y 1 del equipo
-% aplicar_casilla(propiedad(_, _, _), Jugador, Jugador). CASILLA ANTIGUA MEJORA DIEGO
-% Propiedad libre: por ahora no hace nada (más adelante compra/alquiler)
-aplicar_casilla(propiedad(_, _, _, libre), Jugador, Jugador).
-% Propiedad con dueño: por ahora no hace nada (más adelante alquiler)
-aplicar_casilla(propiedad(_, _, _, Dueno), Jugador, Jugador) :-
-    Dueno \= libre. %para asegurarte que si tiene dueño ya no esta libre
-
-%aplicar_casilla(estacion(_),        Jugador, Jugador). CASILLA ANTIGUA MEJORA DIEGO
-%aplicar_casilla(servicio(_),        Jugador, Jugador). CASILLA ANTIGUA MEJORA DIEGO
-
-% Estación libre / con dueño (por ahora no hace nada)
-aplicar_casilla(estacion(_, libre), Jugador, Jugador).
-aplicar_casilla(estacion(_, Dueno), Jugador, Jugador) :- Dueno \= libre.
-
-% Servicio libre / con dueño (por ahora no hace nada)
-aplicar_casilla(servicio(_, libre), Jugador, Jugador).
-aplicar_casilla(servicio(_, Dueno), Jugador, Jugador) :- Dueno \= libre.
-
-% ------ MOVIMIENTO ------
 nueva_posicion(Pos, Tirada, NuevaPos) :-
     NuevaPos is (Pos + Tirada) mod 40.
 
 pasa_por_salida(Pos, Tirada) :-
     Pos + Tirada >= 40.
 
-mover_jugador(jugador(N, Pos, Dinero, Props), Turno, NuevoJugador) :-
+mover_jugador(Jugador, Turno) :-
+    Jugador = jugador(_, Pos, Dinero, _),
     valor_dados(Turno, Tirada),
     nueva_posicion(Pos, Tirada, NuevaPos),
-    (   pasa_por_salida(Pos, Tirada)
-    ->  NuevoDinero is Dinero + 200
-    ;   NuevoDinero = Dinero
+    
+    ( pasa_por_salida(Pos, Tirada) 
+    -> NuevoDinero is Dinero + 200 
+    ;  NuevoDinero = Dinero 
     ),
-    NuevoJugador = jugador(N, NuevaPos, NuevoDinero, Props).
-
-actualizar_jugador(Nuevo, [jugador(NombreJ,_,_,_)|R], [Nuevo|R]) :-
-    Nuevo = jugador(NombreJ,_,_,_), !.
-actualizar_jugador(Nuevo, [J|R], [J|RA]) :-
-    actualizar_jugador(Nuevo, R, RA).
-
-% ------ CONTROL DE TURNO ------
-jugador_actual(Jugadores, Turno, Jugador) :-
-    length(Jugadores, N),
-    Idx is Turno mod N,
-    nth0(Idx, Jugadores, Jugador).
-
-siguiente_turno(Turno, Nuevo) :-
-    Nuevo is Turno + 1.
-
-% Jugar turno completo:
-% 1. Jugador actual
-% 2. Mover (2 dados + paso por salida)
-% 3. Aplicar acción de la casilla
-% 4. Actualizar jugadores
-% 5. Avanzar turno
-jugarTurno(estado(Jugadores, Tablero, Turno),
-           estado(NuevosJugadores, Tablero, NuevoTurno)) :-
-    jugador_actual(Jugadores, Turno, Jugador),
-    mover_jugador(Jugador, Turno, JugadorMovido),
-    JugadorMovido = jugador(_, NuevaPos, _, _),
-    nth0(NuevaPos, Tablero, Casilla),
-    aplicar_casilla(Casilla, JugadorMovido, JugadorFinal),
-    actualizar_jugador(JugadorFinal, Jugadores, NuevosJugadores),
-    siguiente_turno(Turno, NuevoTurno).
+    
+    nb_setarg(2, Jugador, NuevaPos),
+    nb_setarg(3, Jugador, NuevoDinero).
 
 % ============================================================
-% ------ CONSULTAS DE PROPIEDADES, ESTACIONES Y SERVICIOS ------
+% ------ ACCIÓN DE CASILLAS EFICIENTE (SERGIO + DIEGO) ------
 % ============================================================
 
-% props_de_jugador(+Nombre, +Estado, -Props)
-props_de_jugador(Nombre, estado(Jugadores, _, _), Props) :-
+% Ir a la cárcel: mutamos su posición (argumento 2) a la 10.
+aplicar_casilla(casilla(ir_a_carcel, _), Jugador) :-
+    nb_setarg(2, Jugador, 10).
+
+% Impuesto: mutamos su dinero (argumento 3).
+aplicar_casilla(casilla(impuesto, Cantidad), Jugador) :-
+    Jugador = jugador(_, _, Dinero, _),
+    NuevoDinero is Dinero - Cantidad,
+    nb_setarg(3, Jugador, NuevoDinero).
+
+% Propiedades, estaciones y servicios de Diego: 
+% Por ahora no mutan nada, solo hacen match (más adelante se implementará compra/alquiler)
+aplicar_casilla(propiedad(_, _, _, _), _).
+aplicar_casilla(estacion(_, _), _).
+aplicar_casilla(servicio(_, _), _).
+
+% Catch-all: Resto de casillas simples (salida, carcel, parking, cartas) no mutan nada
+aplicar_casilla(_, _).
+
+% ============================================================
+% ------ CONTROL DE TURNO INTERACTIVO (SERGIO) ------
+% ============================================================
+jugar_turno :-
+    nb_getval(turno_actual, Turno),
+    nb_getval(jugadores, Jugadores),
+    
+    Idx is Turno mod 2,
+    nth0(Idx, Jugadores, JugadorActual),
+    JugadorActual = jugador(Nombre, _, _, _),
+    
+    mover_jugador(JugadorActual, Turno),
+    
+    JugadorActual = jugador(_, NuevaPos, _, _),
+    casilla_en(NuevaPos, Casilla),
+    aplicar_casilla(Casilla, JugadorActual),
+    
+    NuevoTurno is Turno + 1,
+    nb_setval(turno_actual, NuevoTurno),
+    
+    valor_dados(Turno, Tirada),
+    format('~n--- TURNO ~w ---~n', [Turno]),
+    format('Juega: ~w. Saca un ~w en los dados.~n', [Nombre, Tirada]),
+    format('Cae en la posicion ~w: ~w~n', [NuevaPos, Casilla]),
+    format('Estado final del jugador: ~w~n', [JugadorActual]).
+
+jugar_turnos(0) :- !.
+jugar_turnos(N) :-
+    N > 0, jugar_turno, N1 is N - 1, jugar_turnos(N1).
+
+% ============================================================
+% ------ CONSULTAS ADAPTADAS AL ESTADO GLOBAL (DIEGO) ------
+% ============================================================
+
+% props_de_jugador(+Nombre, -Props)
+% Busca las propiedades en la lista de jugadores global.
+props_de_jugador(Nombre, Props) :-
+    nb_getval(jugadores, Jugadores),
     member(jugador(Nombre, _, _, Props), Jugadores).
 
-% propiedades_de_dueno(+Dueno, +Tablero, -ListaNombres)
-propiedades_de_dueno(Dueno, Tablero, ListaNombres) :-
-    findall(Nombre,
-            member(propiedad(Nombre, _, _, Dueno), Tablero),
-            ListaNombres).
+% propiedades_de_dueno(+Dueno, -ListaNombres)
+% Busca las propiedades directamente leyendo el tablero.
+propiedades_de_dueno(Dueno, ListaNombres) :-
+    tablero(T),
+    findall(Nombre, member(propiedad(Nombre, _, _, Dueno), T), ListaNombres).
 
-estaciones_de_dueno(Dueno, Tablero, Lista) :-
-    findall(Nombre, member(estacion(Nombre, Dueno), Tablero), Lista).
+% estaciones_de_dueno(+Dueno, -Lista)
+estaciones_de_dueno(Dueno, Lista) :-
+    tablero(T),
+    findall(Nombre, member(estacion(Nombre, Dueno), T), Lista).
 
-servicios_de_dueno(Dueno, Tablero, Lista) :-
-    findall(Nombre, member(servicio(Nombre, Dueno), Tablero), Lista).
+% servicios_de_dueno(+Dueno, -Lista)
+servicios_de_dueno(Dueno, Lista) :-
+    tablero(T),
+    findall(Nombre, member(servicio(Nombre, Dueno), T), Lista).
