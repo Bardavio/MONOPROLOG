@@ -1,69 +1,49 @@
-% ============================================================
-%  PARTE DE: Ángel Jiménez
-%  Módulo: Tablero + Dado simulado
-%  Mejoras respecto a la versión inicial:
-%    1. Dado doble (dos secuencias independientes)
-%    2. Casillas simples con estructura casilla(Tipo, Descripcion)
-%       AVISO AL EQUIPO: las casillas simples ya no son átomos sueltos.
-%       Para hacer pattern matching usar:
-%         casilla(salida, _)
-%         casilla(carta, _)
-%         casilla(chance, _)
-%         casilla(carcel, _)
-%         casilla(parking, _)
-%         casilla(ir_a_carcel, _)
-%         casilla(impuesto, Cantidad)   <- Cantidad es el número
-%       Las propiedades, estaciones y servicios NO cambian.
-% ============================================================
+
 
 % ------ TABLERO ------
-% Casillas simples usan: casilla(Tipo, Descripcion)
-% Casillas con propietario siguen igual que antes:
-%   propiedad(Nombre, Precio, Color)
-%   estacion(Nombre)
-%   servicio(Nombre)
+
 tablero(Tablero) :-
     Tablero = [
         casilla(salida,      'Cobras $200 al pasar'),
-        propiedad(marron1,   60,  marron),
+        propiedad(marron1,   60,  marron, libre),
         casilla(carta,       'Carta de Comunidad'),
-        propiedad(marron2,   60,  marron),
+        propiedad(marron2,   60,  marron, libre),
         casilla(impuesto,    200),
-        estacion(norte),
-        propiedad(celeste1,  100, celeste),
+        estacion(norte, libre),
+        propiedad(celeste1,  100, celeste, libre),
         casilla(chance,      'Carta de Suerte'),
-        propiedad(celeste2,  100, celeste),
-        propiedad(celeste3,  120, celeste),
+        propiedad(celeste2,  100, celeste, libre),
+        propiedad(celeste3,  120, celeste, libre),
         casilla(carcel,      'Solo de visita'),
-        propiedad(rosa1,     140, rosa),
-        servicio(electrica),
-        propiedad(rosa2,     140, rosa),
-        propiedad(rosa3,     160, rosa),
-        estacion(sur),
-        propiedad(naranja1,  180, naranja),
+        propiedad(rosa1,     140, rosa, libre),
+        servicio(electrica, libre),
+        propiedad(rosa2,     140, rosa, libre),
+        propiedad(rosa3,     160, rosa, libre),
+        estacion(sur, libre),
+        propiedad(naranja1,  180, naranja, libre),
         casilla(carta,       'Carta de Comunidad'),
-        propiedad(naranja2,  180, naranja),
-        propiedad(naranja3,  200, naranja),
+        propiedad(naranja2,  180, naranja, libre),
+        propiedad(naranja3,  200, naranja, libre),
         casilla(parking,     'Parking gratuito'),
-        propiedad(rojo1,     220, rojo),
+        propiedad(rojo1,     220, rojo, libre),
         casilla(chance,      'Carta de Suerte'),
-        propiedad(rojo2,     220, rojo),
-        propiedad(rojo3,     240, rojo),
-        estacion(este),
-        propiedad(amarillo1, 260, amarillo),
-        propiedad(amarillo2, 260, amarillo),
-        servicio(agua),
-        propiedad(amarillo3, 280, amarillo),
+        propiedad(rojo2,     220, rojo, libre),
+        propiedad(rojo3,     240, rojo, libre),
+        estacion(este, libre),
+        propiedad(amarillo1, 260, amarillo, libre),
+        propiedad(amarillo2, 260, amarillo, libre),
+        servicio(agua, libre),
+        propiedad(amarillo3, 280, amarillo, libre),
         casilla(ir_a_carcel, 'Ve directamente a la carcel'),
-        propiedad(verde1,    300, verde),
-        propiedad(verde2,    300, verde),
+        propiedad(verde1,    300, verde, libre),
+        propiedad(verde2,    300, verde, libre),
         casilla(carta,       'Carta de Comunidad'),
-        propiedad(verde3,    320, verde),
-        estacion(oeste),
+        propiedad(verde3,    320, verde, libre),
+        estacion(oeste, libre),
         casilla(chance,      'Carta de Suerte'),
-        propiedad(azul1,     350, azul),
+        propiedad(azul1,     350, azul, libre),
         casilla(impuesto,    100),
-        propiedad(azul2,     400, azul)
+        propiedad(azul2,     400, azul, libre)
     ].
 
 % casilla_en(+Indice, -Casilla)
@@ -153,9 +133,23 @@ aplicar_casilla(casilla(impuesto, Cantidad),
     NuevoDinero is Dinero - Cantidad.
 
 % Las casillas con propietario las gestionan las Reglas 0 y 1 del equipo
-aplicar_casilla(propiedad(_, _, _), Jugador, Jugador).
-aplicar_casilla(estacion(_),        Jugador, Jugador).
-aplicar_casilla(servicio(_),        Jugador, Jugador).
+% aplicar_casilla(propiedad(_, _, _), Jugador, Jugador). CASILLA ANTIGUA MEJORA DIEGO
+% Propiedad libre: por ahora no hace nada (más adelante compra/alquiler)
+aplicar_casilla(propiedad(_, _, _, libre), Jugador, Jugador).
+% Propiedad con dueño: por ahora no hace nada (más adelante alquiler)
+aplicar_casilla(propiedad(_, _, _, Dueno), Jugador, Jugador) :-
+    Dueno \= libre. %para asegurarte que si tiene dueño ya no esta libre
+
+%aplicar_casilla(estacion(_),        Jugador, Jugador). CASILLA ANTIGUA MEJORA DIEGO
+%aplicar_casilla(servicio(_),        Jugador, Jugador). CASILLA ANTIGUA MEJORA DIEGO
+
+% Estación libre / con dueño (por ahora no hace nada)
+aplicar_casilla(estacion(_, libre), Jugador, Jugador).
+aplicar_casilla(estacion(_, Dueno), Jugador, Jugador) :- Dueno \= libre.
+
+% Servicio libre / con dueño (por ahora no hace nada)
+aplicar_casilla(servicio(_, libre), Jugador, Jugador).
+aplicar_casilla(servicio(_, Dueno), Jugador, Jugador) :- Dueno \= libre.
 
 % ------ MOVIMIENTO ------
 nueva_posicion(Pos, Tirada, NuevaPos) :-
@@ -202,3 +196,23 @@ jugarTurno(estado(Jugadores, Tablero, Turno),
     aplicar_casilla(Casilla, JugadorMovido, JugadorFinal),
     actualizar_jugador(JugadorFinal, Jugadores, NuevosJugadores),
     siguiente_turno(Turno, NuevoTurno).
+
+% ============================================================
+% ------ CONSULTAS DE PROPIEDADES, ESTACIONES Y SERVICIOS ------
+% ============================================================
+
+% props_de_jugador(+Nombre, +Estado, -Props)
+props_de_jugador(Nombre, estado(Jugadores, _, _), Props) :-
+    member(jugador(Nombre, _, _, Props), Jugadores).
+
+% propiedades_de_dueno(+Dueno, +Tablero, -ListaNombres)
+propiedades_de_dueno(Dueno, Tablero, ListaNombres) :-
+    findall(Nombre,
+            member(propiedad(Nombre, _, _, Dueno), Tablero),
+            ListaNombres).
+
+estaciones_de_dueno(Dueno, Tablero, Lista) :-
+    findall(Nombre, member(estacion(Nombre, Dueno), Tablero), Lista).
+
+servicios_de_dueno(Dueno, Tablero, Lista) :-
+    findall(Nombre, member(servicio(Nombre, Dueno), Tablero), Lista).
