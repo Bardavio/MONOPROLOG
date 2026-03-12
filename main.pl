@@ -1,13 +1,18 @@
 % --- Estado global ---
 iniciar_juego :-
     nb_setval(jugadores, [
-        jugador(alice, 0, 1500, []),
-        jugador(bob,   0, 1500, [])
+        jugador(alice,  0, 1500, []),
+        jugador(bob,    0, 1500, []),
+        jugador(alice1, 0, 1500, []),
+        jugador(bob1,   0, 1500, []),
+        jugador(alice2, 0, 1500, []),
+        jugador(bob2,   0, 1500, [])
     ]),
     nb_setval(turno_actual, 0),
     writeln('================================================'),
-    writeln('¡Partida iniciada con eficiencia maxima!'),
+    writeln('¡Partida iniciada con eficiencia maxima (6 jugadores)!'),
     writeln('Memoria lista. Usa "jugar_turno." para avanzar.'),
+    writeln('Para pruebas, usa los comandos "test_..."'),
     writeln('================================================').
 
 % --- Tablero con dueños ---
@@ -80,23 +85,26 @@ valor_dados(Turno, Total) :-
     valor_dado2(Turno, V2),
     Total is V1 + V2.
 
-% cierto si ambos dados tienen el mismo valor
 es_doble(Turno) :-
     valor_dado1(Turno, V),
     valor_dado2(Turno, V).
 
-% --- Movimiento ---
+% --- Movimiento Separado (Para permitir Testeo) ---
 nueva_posicion(Pos, Tirada, NuevaPos) :-
     NuevaPos is (Pos + Tirada) mod 40.
 
 pasa_por_salida(Pos, Tirada) :-
     Pos + Tirada >= 40.
 
+% Mueve con los dados automáticos
 mover_jugador(Jugador, Turno) :-
-    Jugador = jugador(_, Pos, Dinero, _),
     valor_dados(Turno, Tirada),
+    mover_jugador_con_tirada(Jugador, Tirada).
+
+% Mueve con la tirada que nosotros queramos (Esencial para los Tests)
+mover_jugador_con_tirada(Jugador, Tirada) :-
+    Jugador = jugador(_, Pos, Dinero, _),
     nueva_posicion(Pos, Tirada, NuevaPos),
-    % bonus $200 al cruzar salida
     ( pasa_por_salida(Pos, Tirada)
     -> NuevoDinero is Dinero + 200
     ;  NuevoDinero = Dinero
@@ -104,9 +112,8 @@ mover_jugador(Jugador, Turno) :-
     nb_setarg(2, Jugador, NuevaPos),
     nb_setarg(3, Jugador, NuevoDinero).
 
-% --- Acción de casillas ---
 
-% teletransporta a casilla 10 (cárcel)
+% --- Acción de casillas ---
 aplicar_casilla(casilla(ir_a_carcel, _), Jugador) :-
     nb_setarg(2, Jugador, 10).
 
@@ -159,7 +166,6 @@ aplicar_casilla(propiedad(Nombre, Precio, _, _), Jugador) :-
     format('[Sin fondos] ~w no puede comprar ~w ($~w, cuesta $~w).~n',
            [NombreJ, Nombre, Dinero, Precio]).
 
-% fallthrough (propiedad ya manejada con cortes)
 aplicar_casilla(propiedad(_, _, _, _), _).
 
 % estación de otro → pagar alquiler
@@ -256,12 +262,10 @@ aplicar_casilla(servicio(Nombre, _), Jugador) :-
 
 aplicar_casilla(servicio(_, _), _).
 
-% Catch-all: resto de casillas (salida, carcel, parking, cartas) no mutan nada
 aplicar_casilla(_, _).
 
-% --- Control de turno ---
 
-% mueve, aplica casilla y muestra log del turno
+% --- Control de turno ---
 ejecutar_turno(Idx, Turno) :-
     nb_getval(jugadores, Jugadores),
     nth0(Idx, Jugadores, JugadorActual),
@@ -279,11 +283,12 @@ ejecutar_turno(Idx, Turno) :-
 jugar_turno :-
     nb_getval(turno_actual, Turno),
     nb_getval(jugadores, Jugadores),
-    Idx is Turno mod 2,
+    % SOLUCIÓN: Calculamos el índice basándonos en cuántos jugadores hay
+    length(Jugadores, N),
+    Idx is Turno mod N,
     ejecutar_turno(Idx, Turno),
     NuevoTurno is Turno + 1,
     nb_setval(turno_actual, NuevoTurno),
-    % encadenamiento: dado doble → turno extra del mismo jugador
     ( es_doble(Turno)
     -> nb_getval(turno_actual, Turno2),
        nth0(Idx, Jugadores, J),
@@ -300,35 +305,26 @@ jugar_turnos(N) :-
     N > 0, jugar_turno, N1 is N - 1, jugar_turnos(N1).
 
 % --- Consultas globales ---
-
-% props_de_jugador(+Nombre, -Props)
 props_de_jugador(Nombre, Props) :-
     nb_getval(jugadores, Jugadores),
     member(jugador(Nombre, _, _, Props), Jugadores).
 
-% propiedades_de_dueno(+Dueno, -Lista)
-% TODO: Deberiamos definir la clausula propiedad/4 de forma que solo incluya propiedades, y no estaciones ni servicios, para evitar este filtro extra
 propiedades_de_dueno(Dueno, Lista) :-
     nb_getval(jugadores, Jugadores),
     member(jugador(Dueno, _, _, Props), Jugadores),
-    % filtrar solo propiedades (excluye estaciones y servicios)
     include([X]>>(X \= estacion(_), X \= servicio(_)), Props, Lista).
 
-% estaciones_de_dueno(+Dueno, -Lista)
 estaciones_de_dueno(Dueno, Lista) :-
     nb_getval(jugadores, Jugadores),
     member(jugador(Dueno, _, _, Props), Jugadores),
     findall(N, member(estacion(N), Props), Lista).
 
-% servicios_de_dueno(+Dueno, -Lista)
 servicios_de_dueno(Dueno, Lista) :-
     nb_getval(jugadores, Jugadores),
     member(jugador(Dueno, _, _, Props), Jugadores),
     findall(N, member(servicio(N), Props), Lista).
 
 % --- Reglas de propiedad ---
-
-% alquiler_color(+Color, -Alquiler): alquiler fijo por grupo de color (valores Monopoly original)
 alquiler_color(marron,    2).
 alquiler_color(celeste,   6).
 alquiler_color(rosa,     10).
@@ -338,35 +334,98 @@ alquiler_color(amarillo, 22).
 alquiler_color(verde,    26).
 alquiler_color(azul,     50).
 
-% propiedad_libre(+Nombre): cierto si ningún jugador la tiene en su lista
 propiedad_libre(Nombre) :-
     nb_getval(jugadores, Jugadores),
     \+ (member(jugador(_, _, _, Props), Jugadores), member(Nombre, Props)).
 
-% dueno_de(+Nombre, -JugadorDueno)
 dueno_de(Nombre, JugadorDueno) :-
     nb_getval(jugadores, Jugadores),
     member(JugadorDueno, Jugadores),
     JugadorDueno = jugador(_, _, _, Props),
     member(Nombre, Props).
 
-% dueno_estacion(+Nombre, -JugadorDueno)
 dueno_estacion(Nombre, JugadorDueno) :-
     nb_getval(jugadores, Jugadores),
     member(JugadorDueno, Jugadores),
     JugadorDueno = jugador(_, _, _, Props),
     member(estacion(Nombre), Props).
 
-% dueno_servicio(+Nombre, -JugadorDueno)
 dueno_servicio(Nombre, JugadorDueno) :-
     nb_getval(jugadores, Jugadores),
     member(JugadorDueno, Jugadores),
     JugadorDueno = jugador(_, _, _, Props),
     member(servicio(Nombre), Props).
 
-
 precio_estacion(200).
 precio_servicio(150).
 
 alquiler(Precio, Alquiler) :-
     Alquiler is Precio // 10.
+
+
+% ============================================================
+% --- MODO TEST / HERRAMIENTAS DE PRUEBAS ---
+% Utiliza estas funciones para probar partes específicas del juego
+% ============================================================
+
+% 1. Forzar una tirada exacta para un jugador (Ej: test_tirada(alice, 4).)
+test_tirada(Nombre, Tirada) :-
+    nb_getval(jugadores, Jugadores),
+    member(JugadorActual, Jugadores),
+    JugadorActual = jugador(Nombre, _, _, _),
+    mover_jugador_con_tirada(JugadorActual, Tirada),
+    JugadorActual = jugador(_, NuevaPos, _, _),
+    casilla_en(NuevaPos, Casilla),
+    format('~n[TEST] ~w ha sido forzado a sacar un ~w.~n', [Nombre, Tirada]),
+    aplicar_casilla(Casilla, JugadorActual),
+    format('[TEST] Estado actual de ~w: ~w~n', [Nombre, JugadorActual]).
+
+% 2. Teletransportar a un jugador a una casilla (Ej: test_caer_en(bob, 30). -> Ir a cárcel)
+test_caer_en(Nombre, PosicionCasilla) :-
+    nb_getval(jugadores, Jugadores),
+    member(JugadorActual, Jugadores),
+    JugadorActual = jugador(Nombre, _, _, _),
+    nb_setarg(2, JugadorActual, PosicionCasilla),
+    casilla_en(PosicionCasilla, Casilla),
+    format('~n[TEST] Teletransportando a ~w a la casilla ~w (~w)...~n', [Nombre, PosicionCasilla, Casilla]),
+    aplicar_casilla(Casilla, JugadorActual),
+    format('[TEST] Estado actual de ~w: ~w~n', [Nombre, JugadorActual]).
+
+% 3. Cambiar el dinero de un jugador (Ej: test_dinero(alice, 10). -> Arruinar a Alice)
+test_dinero(Nombre, NuevoDinero) :-
+    nb_getval(jugadores, Jugadores),
+    member(JugadorActual, Jugadores),
+    JugadorActual = jugador(Nombre, _, _, _),
+    nb_setarg(3, JugadorActual, NuevoDinero),
+    format('~n[TEST] El dinero de ~w ha sido ajustado a $~w.~n', [Nombre, NuevoDinero]).
+
+% 4. Dar una propiedad gratis a un jugador (Ej: test_dar_propiedad(bob, azul2).)
+test_dar_propiedad(Nombre, NuevaPropiedad) :-
+    nb_getval(jugadores, Jugadores),
+    member(JugadorActual, Jugadores),
+    JugadorActual = jugador(Nombre, _, _, Props),
+    \+ member(NuevaPropiedad, Props), % Se asegura de que no la tenga ya
+    nb_setarg(4, JugadorActual, [NuevaPropiedad | Props]),
+    format('~n[TEST] ~w ha recibido la propiedad ~w mágicamente.~n', [Nombre, NuevaPropiedad]).
+
+% 5. Forzar un turno doble completo (Demuestra la regla del turno extra)
+% Uso: test_turno_doble(alice, 3, 5). -> Saca doble 3, y en el turno extra saca un 5.
+test_turno_doble(Nombre, ValorDadoDoble, TiradaExtra) :-
+    Tirada1 is ValorDadoDoble * 2,
+    format('~n================================================'),
+    format('~n[TEST] ~w inicia su turno y saca DOBLE ~w (~w y ~w)!~n', 
+           [Nombre, ValorDadoDoble, ValorDadoDoble, ValorDadoDoble]),
+    
+    % 1. Ejecutamos la primera tirada (el doble)
+    test_tirada(Nombre, Tirada1),
+    
+    % 2. Simulamos la detección del doble y el turno extra
+    format('~n[TEST] ¡Doble detectado! Aplicando regla: Turno extra para ~w.~n', [Nombre]),
+    test_tirada(Nombre, TiradaExtra),
+    
+    % 3. Avanzamos el reloj de la partida para que el juego siga con normalidad
+    nb_getval(turno_actual, Turno),
+    NuevoTurno is Turno + 1,
+    nb_setval(turno_actual, NuevoTurno),
+    format('~n[TEST] Turno doble de ~w terminado. Avanzamos al turno ~w.~n', [Nombre, NuevoTurno]),
+    format('================================================~n').
