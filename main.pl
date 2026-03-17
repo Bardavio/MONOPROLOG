@@ -187,8 +187,8 @@ regla_0_compra(Jugador, NombreVisual, ItemGuardado, Precio) :-
     nb_setarg(3, Jugador, NuevoDinero),
     nb_setarg(4, Jugador, [ItemGuardado | Props]),
     format('[Regla 0 - Compra] ~w compra ~w por $~w. Dinero restante: $~w~n', 
-           [NombreJ, NombreVisual, Precio, NuevoDinero]).
-
+           [NombreJ, NombreVisual, Precio, NuevoDinero]),
+    comprobar_monopolios_jugador(NombreJ).
 % Extensión de Regla 0: Si está libre pero no hay fondos
 regla_0_compra(Jugador, NombreVisual, _, Precio) :-
     Jugador = jugador(NombreJ, _, Dinero, _),
@@ -306,6 +306,35 @@ dueno_servicio(Nombre, JugadorDueno) :-
     member(JugadorDueno, Jugadores),
     JugadorDueno = jugador(_, _, _, Props),
     member(servicio(Nombre), Props).
+
+% ============================================================
+% --- REGLA 2: MONOPOLIO ---
+% ============================================================
+grupo_color(marron, [marron1, marron2]).
+grupo_color(celeste, [celeste1, celeste2, celeste3]).
+grupo_color(rosa, [rosa1, rosa2, rosa3]).
+grupo_color(naranja, [naranja1, naranja2, naranja3]).
+grupo_color(rojo, [rojo1, rojo2, rojo3]).
+grupo_color(amarillo, [amarillo1, amarillo2, amarillo3]).
+grupo_color(verde, [verde1, verde2, verde3]).
+grupo_color(azul, [azul1, azul2]).
+
+subset_lista([], _).
+subset_lista([X|Xs], Lista) :- %primer elemento de la lista X y despues Xs
+    member(X, Lista),
+    subset_lista(Xs, Lista).
+
+tiene_monopolio(NombreJugador, Color) :-
+    props_de_jugador(NombreJugador, Props),
+    grupo_color(Color, Grupo),
+    subset_lista(Grupo, Props).
+
+comprobar_monopolios_jugador(NombreJugador) :-
+    tiene_monopolio(NombreJugador, Color),
+    format('[Regla 2 - Monopolio] ~w tiene el monopolio del color ~w y puede construir casas.~n',
+           [NombreJugador, Color]),
+    fail.
+comprobar_monopolios_jugador(_).
 
 % ============================================================
 % --- MODO TEST / HERRAMIENTAS DE PRUEBAS ---
