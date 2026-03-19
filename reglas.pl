@@ -75,6 +75,7 @@ comprobar_bancarrota(Jugador) :-
     ;  format('[Regla 3 - Recuperado] ~w se salva tras liquidar. Dinero actual: $~w~n',
               [Nombre, DineroPost])
     ).
+
 comprobar_bancarrota(_). % Si no esta en negativo, no pasa nada
 
 % Vende todas las propiedades a mitad de precio
@@ -89,6 +90,7 @@ liquidar_activos(Jugador) :-
 
 % Suma mitad del precio de cada propiedad
 calcular_valor_liquidacion([], 0).
+
 calcular_valor_liquidacion([Prop|Rest], Total) :-
     precio_propiedad(Prop, Precio),
     calcular_valor_liquidacion(Rest, RestTotal),
@@ -98,10 +100,13 @@ calcular_valor_liquidacion([Prop|Rest], Total) :-
 precio_propiedad(Nombre, Precio) :-
     tablero(T),
     member(propiedad(Nombre, Precio, _, _), T), !.
+
 precio_propiedad(estacion(_), Precio) :-
     precio_estacion(Precio), !.
+
 precio_propiedad(servicio(_), Precio) :-
     precio_servicio(Precio), !.
+
 precio_propiedad(_, 0).
 
 % Elimina al jugador de la lista global

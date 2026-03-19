@@ -6,25 +6,35 @@
 % test_tirada(Nombre, Tirada) — fuerza una tirada exacta
 % Comando: swipl -l tests.pl -g "iniciar_juego, test_tirada(alice, 4)" -t halt
 test_tirada(Nombre, Tirada) :-
+    % 1. Obtener jugador
     nb_getval(jugadores, Jugadores),
     member(JugadorActual, Jugadores),
     JugadorActual = jugador(Nombre, _, _, _),
+    
+    % 2. Forzar movimiento
     mover_jugador_con_tirada(JugadorActual, Tirada),
     JugadorActual = jugador(_, NuevaPos, _, _),
     casilla_en(NuevaPos, Casilla),
     format('~n[TEST] ~w ha sido forzado a sacar un ~w.~n', [Nombre, Tirada]),
+    
+    % 3. Aplicar efectos
     aplicar_casilla(Casilla, JugadorActual),
     format('[TEST] Estado actual de ~w: ~w~n', [Nombre, JugadorActual]).
 
 % test_caer_en(Nombre, Pos) — teletransporta a una casilla
 % Comando: swipl -l tests.pl -g "iniciar_juego, test_caer_en(bob, 30)" -t halt
 test_caer_en(Nombre, PosicionCasilla) :-
+    % 1. Obtener jugador
     nb_getval(jugadores, Jugadores),
     member(JugadorActual, Jugadores),
     JugadorActual = jugador(Nombre, _, _, _),
+    
+    % 2. Teletransportar
     nb_setarg(2, JugadorActual, PosicionCasilla),
     casilla_en(PosicionCasilla, Casilla),
     format('~n[TEST] Teletransportando a ~w a la casilla ~w (~w)...~n', [Nombre, PosicionCasilla, Casilla]),
+    
+    % 3. Aplicar efectos
     aplicar_casilla(Casilla, JugadorActual),
     format('[TEST] Estado actual de ~w: ~w~n', [Nombre, JugadorActual]).
 
@@ -54,9 +64,15 @@ test_turno_doble(Nombre, ValorDadoDoble, TiradaExtra) :-
     format('~n================================================'),
     format('~n[TEST] ~w inicia su turno y saca DOBLE ~w (~w y ~w)!~n', 
            [Nombre, ValorDadoDoble, ValorDadoDoble, ValorDadoDoble]),
+           
+    % 1. Tirada inicial (doble)
     test_tirada(Nombre, Tirada1),
     format('~n[TEST] ¡Doble detectado! Aplicando regla: Turno extra para ~w.~n', [Nombre]),
+    
+    % 2. Tirada extra
     test_tirada(Nombre, TiradaExtra),
+    
+    % 3. Avanzar turno
     nb_getval(turno_actual, Turno),
     NuevoTurno is Turno + 1,
     nb_setval(turno_actual, NuevoTurno),
@@ -68,22 +84,70 @@ test_turno_doble(Nombre, ValorDadoDoble, TiradaExtra) :-
 test_bancarrota(Nombre) :-
     format('~n================================================~n'),
     format('[TEST BANCARROTA] Preparando escenario para ~w...~n', [Nombre]),
+    
+    % 1. Dejar poco dinero
     test_dinero(Nombre, 10),
+    
+    % 2. Buscar otro jugador (dueño)
     nb_getval(jugadores, Jugadores),
     member(Dueno, Jugadores),
     Dueno = jugador(DuenoNombre, _, _, _),
     DuenoNombre \== Nombre, !,
+    
+    % 3. Asegurar que el dueño tiene la propiedad cara
     ( \+ (Dueno = jugador(_, _, _, PropsD), member(azul2, PropsD))
     -> test_dar_propiedad(DuenoNombre, azul2)
     ;  true
     ),
+    
     format('[TEST BANCARROTA] ~w tiene $10 y caera en azul2 (dueño: ~w, alquiler: $50)~n',
            [Nombre, DuenoNombre]),
+           
+    % 4. Forzar caída
     test_caer_en(Nombre, 39),
+    
+    % 5. Estado final
     format('[TEST BANCARROTA] Estado final de la partida:~n'),
     nb_getval(jugadores, JugadoresFinales),
     format('Jugadores restantes: ~w~n', [JugadoresFinales]),
     format('================================================~n').
+
+test_bancarrota2(Nombre) :-
+    format('~n================================================~n'),
+    format('[TEST BANCARROTA 2] Preparando escenario para ~w...~n', [Nombre]),
+
+    % 1. Dejar poco dinero
+    test_dinero(Nombre, 10),
+
+    % 2. Darle propiedades para que pueda liquidar
+    test_dar_propiedad(Nombre, marron1),
+    test_dar_propiedad(Nombre, marron2),
+
+    % 3. Buscar otro jugador (dueño)
+    nb_getval(jugadores, Jugadores),
+    member(Dueno, Jugadores),
+    Dueno = jugador(DuenoNombre, _, _, _),
+    DuenoNombre \== Nombre, !,
+
+    % 4. Asegurar que el dueño tiene la propiedad cara
+    ( \+ (Dueno = jugador(_, _, _, PropsD), member(azul2, PropsD))
+    -> test_dar_propiedad(DuenoNombre, azul2)
+    ;  true
+    ),
+
+    format('[TEST BANCARROTA 2] ~w tiene $10 pero puede vender propiedades.~n', [Nombre]),
+    format('[TEST BANCARROTA 2] Caera en azul2 (dueño: ~w, alquiler: $50)~n', [DuenoNombre]),
+
+    % 5. Forzar caída
+    test_caer_en(Nombre, 39),
+
+    % 6. Estado final
+    format('[TEST BANCARROTA 2] Estado final de la partida:~n'),
+    nb_getval(jugadores, JugadoresFinales),
+    format('Jugadores restantes: ~w~n', [JugadoresFinales]),
+
+    format('================================================~n').
+    
 
 % --- Escenarios ---
 
