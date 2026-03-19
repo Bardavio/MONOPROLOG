@@ -67,6 +67,10 @@ tablero(Tablero) :-
         propiedad(azul2,     400, azul, libre)
     ].
 
+longitud_tablero(Len) :-
+    tablero(T),
+    length(T, Len).
+    
 % Devuelve la casilla en el indice dado (0-based)
 casilla_en(Indice, Casilla) :-
     tablero(T),
@@ -105,11 +109,13 @@ es_doble(Turno) :-
 % --- Movimiento (nb_setarg O(1)) ---
 % Calcula nueva posicion circular (mod 40)
 nueva_posicion(Pos, Tirada, NuevaPos) :-
-    NuevaPos is (Pos + Tirada) mod 40.
+    longitud_tablero(Len),
+    NuevaPos is (Pos + Tirada) mod Len.
 
 % Cierto si el movimiento cruza la casilla de salida
 pasa_por_salida(Pos, Tirada) :-
-    Pos + Tirada >= 40.
+    longitud_tablero(Len),
+    Pos + Tirada >= Len.
 
 % Mueve con los dados automaticos del turno
 mover_jugador(Jugador, Turno) :-
@@ -127,13 +133,15 @@ mover_jugador_con_tirada(Jugador, Tirada) :-
     nb_setarg(2, Jugador, NuevaPos),
     nb_setarg(3, Jugador, NuevoDinero).
 
-% --- Enrutador de casillas ---
 
+% --- Enrutador de casillas ---
 % Abstraccion: calle, estacion o servicio -> comprable generico
 item_comprable(propiedad(Nombre, Precio, Color, _), Nombre, Nombre, Precio, Alquiler) :- 
     alquiler_color(Color, Alquiler).
+
 item_comprable(estacion(Nombre, _), Nombre, estacion(Nombre), Precio, Alquiler) :- 
     precio_estacion(Precio), alquiler(Precio, Alquiler).
+
 item_comprable(servicio(Nombre, _), Nombre, servicio(Nombre), Precio, Alquiler) :- 
     precio_servicio(Precio), alquiler(Precio, Alquiler).
 
@@ -143,6 +151,7 @@ estado_dueno(ItemGuardado, Dueno) :-
     member(jugador(Dueno, _, _, Props), Jugadores),
     member(ItemGuardado, Props),
     !.
+
 estado_dueno(_, libre).
 
 % Casillas especiales
