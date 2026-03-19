@@ -112,6 +112,7 @@ test_bancarrota(Nombre) :-
     format('Jugadores restantes: ~w~n', [JugadoresFinales]),
     format('================================================~n').
 
+% test_bancarrota2(Nombre) — se salva vendiendo sus propiedades
 test_bancarrota2(Nombre) :-
     format('~n================================================~n'),
     format('[TEST BANCARROTA 2] Preparando escenario para ~w...~n', [Nombre]),
@@ -156,12 +157,19 @@ test_bancarrota2(Nombre) :-
 escenario_1 :-
     writeln(''),
     writeln('======== ESCENARIO 1: Compras iniciales ========'),
+    
+    % 1. Iniciar partida
     iniciar_juego,
+    
+    % 2. Movimientos forzados
     test_caer_en(alice, 1),
     test_caer_en(bob, 6),
     test_caer_en(alice, 3),
+    
     writeln(''),
     writeln('--- Estado tras compras ---'),
+    
+    % 3. Resultados
     nb_getval(jugadores, J1), format('Jugadores: ~w~n', [J1]),
     writeln('======== FIN ESCENARIO 1 ========'),
     writeln('').
@@ -171,12 +179,19 @@ escenario_1 :-
 escenario_2 :-
     writeln(''),
     writeln('======== ESCENARIO 2: Monopolio formado ========'),
+    
+    % 1. Preparar partida y propiedades
     iniciar_juego,
     test_dar_propiedad(alice, azul1),
     test_dar_propiedad(alice, azul2),
+    
     writeln(''),
     writeln('--- Comprobacion de monopolio ---'),
+    
+    % 2. Verificar regla
     comprobar_monopolios_jugador(alice),
+    
+    % 3. Comprobar efecto colateral
     test_caer_en(bob, 37),
     nb_getval(jugadores, J2), format('Jugadores: ~w~n', [J2]),
     writeln('======== FIN ESCENARIO 2 ========'),
@@ -187,16 +202,24 @@ escenario_2 :-
 escenario_3 :-
     writeln(''),
     writeln('======== ESCENARIO 3: Bancarrota ========'),
+    
+    % 1. Preparar partida (dinero y dueños)
     iniciar_juego,
     test_dar_propiedad(bob, azul2),
     test_dinero(alice, 30),
     test_dar_propiedad(alice, marron1),
     test_dar_propiedad(alice, marron2),
+    
     writeln(''),
     writeln('--- Alice cae en azul2 de Bob (alquiler $50, alice tiene $30) ---'),
+    
+    % 2. Forzar alquiler letal
     test_caer_en(alice, 39),
+    
     writeln(''),
     writeln('--- Estado tras posible liquidacion ---'),
+    
+    % 3. Resultados
     nb_getval(jugadores, J3), format('Jugadores: ~w~n', [J3]),
     writeln('======== FIN ESCENARIO 3 ========'),
     writeln('').
@@ -206,17 +229,25 @@ escenario_3 :-
 escenario_4 :-
     writeln(''),
     writeln('======== ESCENARIO 4: Pagos consecutivos ========'),
+    
+    % 1. Preparar monopolio enemigo
     iniciar_juego,
     test_dar_propiedad(bob, rosa1),
     test_dar_propiedad(bob, rosa2),
     test_dar_propiedad(bob, naranja1),
+    
     writeln(''),
     writeln('--- Alice cae en propiedades de Bob una tras otra ---'),
+    
+    % 2. Múltiples alquileres
     test_caer_en(alice, 11),
     test_caer_en(alice, 13),
     test_caer_en(alice, 16),
+    
     writeln(''),
     writeln('--- Estado tras pagos consecutivos ---'),
+    
+    % 3. Resultados
     nb_getval(jugadores, J4), format('Jugadores: ~w~n', [J4]),
     writeln('======== FIN ESCENARIO 4 ========'),
     writeln('').
@@ -226,12 +257,20 @@ escenario_4 :-
 escenario_5 :-
     writeln(''),
     writeln('======== ESCENARIO 5: Simulacion 10 turnos ========'),
+    
+    % 1. Iniciar
     iniciar_juego,
+    
     writeln(''),
     writeln('--- Jugando 10 turnos automaticos ---'),
+    
+    % 2. Ejecutar bucle
     jugar_turnos(10),
+    
     writeln(''),
     writeln('--- Resultados finales ---'),
+    
+    % 3. Mostrar balance
     nb_getval(jugadores, J5), format('Jugadores: ~w~n', [J5]),
     writeln('======== FIN ESCENARIO 5 ========'),
     writeln('').
