@@ -1,105 +1,252 @@
 % REGLAS DEL JUEGO (reglas.pl)
-% Regla 0: Compra | Regla 1: Alquiler | Regla 2: Monopolio | Regla 3: Bancarrota
+% Regla 0: Compra | Regla 1: Alquiler | Regla 2: Monopolio + Casas | Regla 3: Bancarrota
 
 % --- Regla 0: Compra ---
-regla_0_compra(Jugador, NombreVisual, ItemGuardado, Precio) :-
-    Jugador = jugador(NombreJ, _, Dinero, Props),
-    Dinero >= Precio,
+regla_0_compra(Jugador, NombreProp, ItemGuardado, Precio) :-
+    Jugador = jugador(NombreJugador, _, DineroActual, PropiedadesActuales),
+    DineroActual >= Precio,
     !,
-    NuevoDinero is Dinero - Precio,
-    nb_setarg(3, Jugador, NuevoDinero),
-    nb_setarg(4, Jugador, [ItemGuardado | Props]),
-    format('[Regla 0 - Compra] ~w compra ~w por $~w. Dinero restante: $~w~n', 
-           [NombreJ, NombreVisual, Precio, NuevoDinero]),
-    comprobar_monopolios_jugador(NombreJ).
+    DineroTrasCompra is DineroActual - Precio,
+    nb_setarg(3, Jugador, DineroTrasCompra),
+    nb_setarg(4, Jugador, [ItemGuardado | PropiedadesActuales]),
+    format('[Regla 0 - Compra] ~w compra ~w por $~w. Dinero restante: $~w~n',
+           [NombreJugador, NombreProp, Precio, DineroTrasCompra]),
+    comprobar_monopolios_jugador(NombreJugador).
 
-% Si esta libre pero no hay fondos
-regla_0_compra(Jugador, NombreVisual, _, Precio) :-
-    Jugador = jugador(NombreJ, _, Dinero, _),
-    format('[Regla 0 - Sin fondos] ~w no tiene dinero para comprar ~w ($~w, cuesta $~w).~n', 
-           [NombreJ, NombreVisual, Dinero, Precio]).
+regla_0_compra(Jugador, NombreProp, _, Precio) :-
+    Jugador = jugador(NombreJugador, _, DineroActual, _),
+    format('[Regla 0 - Sin fondos] ~w no puede comprar ~w ($~w, cuesta $~w).~n',
+           [NombreJugador, NombreProp, DineroActual, Precio]).
 
 % --- Regla 1: Alquiler ---
-regla_1_alquiler(Jugador, NombreVisual, DuenoNombre, Alquiler) :-
-    Jugador = jugador(NombreJ, _, DineroJ, _),
+regla_1_alquiler(Jugador, NombreProp, ItemGuardado, NombreDueno, AlquilerBase) :-
+    Jugador = jugador(NombreJugador, _, DineroJugador, _),
     nb_getval(jugadores, Jugadores),
-    member(DuenoJugador, Jugadores),
-    DuenoJugador = jugador(DuenoNombre, _, DineroD, _),
+    member(Dueno, Jugadores),
+    Dueno = jugador(NombreDueno, _, DineroDueno, _),
     !,
-    NuevoDineroJ is DineroJ - Alquiler,
-    NuevoDineroD is DineroD + Alquiler,
-    nb_setarg(3, Jugador, NuevoDineroJ),
-    nb_setarg(3, DuenoJugador, NuevoDineroD),
-    format('[Regla 1 - Alquiler] ~w paga $~w a ~w por ~w.~n', 
-           [NombreJ, Alquiler, DuenoNombre, NombreVisual]).
+    alquiler_efectivo(ItemGuardado, AlquilerBase, NombreDueno, AlquilerFinal),
+    DineroJugadorTras is DineroJugador - AlquilerFinal,
+    DineroDuenoTras   is DineroDueno   + AlquilerFinal,
+    nb_setarg(3, Jugador, DineroJugadorTras),
+    nb_setarg(3, Dueno,   DineroDuenoTras),
+    format('[Regla 1 - Alquiler] ~w paga $~w a ~w por ~w.~n',
+           [NombreJugador, AlquilerFinal, NombreDueno, NombreProp]).
+
+% --- Alquiler efectivo (con casas y monopolio) ---
+alquiler_efectivo(ItemGuardado, AlquilerBase, NombreDueno, AlquilerFinal) :-
+    atom(ItemGuardado),
+    tablero(Tablero),
+    member(propiedad(ItemGuardado, _, Color, _), Tablero),
+    !,
+    obtener_casas(ItemGuardado, NumCasas),
+    ( NumCasas =:= 0 ->
+        ( tiene_monopolio(NombreDueno, Color) ->
+            AlquilerFinal is AlquilerBase * 2
+        ;   AlquilerFinal = AlquilerBase
+        )
+    ; NumCasas =:= 1 -> AlquilerFinal is AlquilerBase * 5
+    ; NumCasas =:= 2 -> AlquilerFinal is AlquilerBase * 15
+    ; NumCasas =:= 3 -> AlquilerFinal is AlquilerBase * 37
+    ;                   AlquilerFinal is AlquilerBase * 100
+    ).
+
+alquiler_efectivo(_, AlquilerBase, _, AlquilerBase).
 
 % --- Regla 2: Monopolio ---
-grupo_color(marron, [marron1, marron2]).
-grupo_color(celeste, [celeste1, celeste2, celeste3]).
-grupo_color(rosa, [rosa1, rosa2, rosa3]).
-grupo_color(naranja, [naranja1, naranja2, naranja3]).
-grupo_color(rojo, [rojo1, rojo2, rojo3]).
+grupo_color(marron,   [marron1, marron2]).
+grupo_color(celeste,  [celeste1, celeste2, celeste3]).
+grupo_color(rosa,     [rosa1, rosa2, rosa3]).
+grupo_color(naranja,  [naranja1, naranja2, naranja3]).
+grupo_color(rojo,     [rojo1, rojo2, rojo3]).
 grupo_color(amarillo, [amarillo1, amarillo2, amarillo3]).
-grupo_color(verde, [verde1, verde2, verde3]).
-grupo_color(azul, [azul1, azul2]).
+grupo_color(verde,    [verde1, verde2, verde3]).
+grupo_color(azul,     [azul1, azul2]).
 
 tiene_monopolio(NombreJugador, Color) :-
-    props_de_jugador(NombreJugador, Props),
-    grupo_color(Color, Grupo),
-    subset_lista(Grupo, Props).
+    props_de_jugador(NombreJugador, Propiedades),
+    grupo_color(Color, GrupoColor),
+    subset_lista(GrupoColor, Propiedades).
 
 comprobar_monopolios_jugador(NombreJugador) :-
     tiene_monopolio(NombreJugador, Color),
     format('[Regla 2 - Monopolio] ~w tiene el monopolio del color ~w y puede construir casas.~n',
            [NombreJugador, Color]),
+    construir_casas_auto(NombreJugador, Color),
     fail.
 comprobar_monopolios_jugador(_).
 
-% --- Regla 3: Bancarrota ---
-% Se llama tras pagar alquiler o impuesto. Si dinero < 0:
-%   1) liquidar_activos: vende propiedades al 50%
-%   2) eliminar_jugador: si sigue en negativo, lo saca del juego
+% --- Gestion de casas ---
 
-comprobar_bancarrota(Jugador) :-
-    Jugador = jugador(Nombre, _, Dinero, _),
-    Dinero < 0,
+inicializar_casas :-
+    nb_setval(casas, []).
+
+% Devuelve el numero de casas en una propiedad (0 si no hay registro)
+obtener_casas(NombreProp, NumCasas) :-
+    nb_getval(casas, ListaCasas),
+    ( member(casas(NombreProp, NumCasas), ListaCasas) -> true ; NumCasas = 0 ).
+
+% Actualiza el numero de casas de una propiedad en el estado global
+set_casas(NombreProp, NumCasas) :-
+    nb_getval(casas, ListaCasas),
+    ( select(casas(NombreProp, _), ListaCasas, ListaSinProp) -> true ; ListaSinProp = ListaCasas ),
+    nb_setval(casas, [casas(NombreProp, NumCasas) | ListaSinProp]).
+
+coste_casa(marron,    50).
+coste_casa(celeste,   50).
+coste_casa(rosa,     100).
+coste_casa(naranja,  100).
+coste_casa(rojo,     150).
+coste_casa(amarillo, 150).
+coste_casa(verde,    200).
+coste_casa(azul,     200).
+
+% Construye 1 casa en NombreProp si el jugador tiene monopolio y fondos suficientes
+construir_casa(NombreJugador, NombreProp) :-
+    tablero(Tablero),
+    member(propiedad(NombreProp, _, Color, _), Tablero),
+    tiene_monopolio(NombreJugador, Color),
+    obtener_casas(NombreProp, CasasActuales),
+    CasasActuales < 4,
+    coste_casa(Color, CosteCasa),
+    nb_getval(jugadores, Jugadores),
+    member(Jugador, Jugadores),
+    Jugador = jugador(NombreJugador, _, DineroActual, _),
+    DineroActual >= CosteCasa,
     !,
-    format('[Regla 3 - Bancarrota] ~w tiene $~w (negativo). Intentando liquidar activos...~n',
-           [Nombre, Dinero]),
-    liquidar_activos(Jugador),
-    Jugador = jugador(_, _, DineroPost, _),
-    ( DineroPost < 0
-    -> format('[Regla 3 - Eliminacion] ~w sigue en negativo ($~w) tras liquidar. Eliminado del juego.~n',
-              [Nombre, DineroPost]),
-       eliminar_jugador(Nombre)
-    ;  format('[Regla 3 - Recuperado] ~w se salva tras liquidar. Dinero actual: $~w~n',
-              [Nombre, DineroPost])
+    DineroTras is DineroActual - CosteCasa,
+    nb_setarg(3, Jugador, DineroTras),
+    CasasNuevo is CasasActuales + 1,
+    set_casas(NombreProp, CasasNuevo),
+    format('[Regla 2 - Casa] ~w construye casa en ~w (total: ~w). Coste: $~w. Dinero: $~w~n',
+           [NombreJugador, NombreProp, CasasNuevo, CosteCasa, DineroTras]).
+
+construir_casa(NombreJugador, NombreProp) :-
+    obtener_casas(NombreProp, CasasActuales),
+    ( CasasActuales >= 4 ->
+        format('[Regla 2 - Casa] ~w: maximo de casas alcanzado en ~w.~n', [NombreJugador, NombreProp])
+    ;   format('[Regla 2 - Casa] ~w no puede construir en ~w (sin fondos o sin monopolio).~n',
+               [NombreJugador, NombreProp])
     ).
 
-comprobar_bancarrota(_). % Si no esta en negativo, no pasa nada
+% Construye 1 casa automatica en cada propiedad del Color al detectar monopolio
+construir_casas_auto(NombreJugador, Color) :-
+    grupo_color(Color, PropiedadesColor),
+    construir_casas_lista(NombreJugador, PropiedadesColor).
 
-% Vende todas las propiedades a mitad de precio
+construir_casas_lista(_, []).
+construir_casas_lista(NombreJugador, [Prop | Resto]) :-
+    construir_casa(NombreJugador, Prop),
+    construir_casas_lista(NombreJugador, Resto).
+
+% --- Hipotecas ---
+
+inicializar_hipotecas :-
+    nb_setval(hipotecas, []).
+
+esta_hipotecada(NombreProp) :-
+    nb_getval(hipotecas, H),
+    member(NombreProp, H).
+
+% Hipotecar: el jugador recibe el 50% del precio y la propiedad queda bloqueada
+hipotecar(NombreJugador, NombreProp) :-
+    props_de_jugador(NombreJugador, Propiedades),
+    member(NombreProp, Propiedades),
+    \+ esta_hipotecada(NombreProp),
+    obtener_casas(NombreProp, 0),
+    precio_propiedad(NombreProp, Precio),
+    ValorHipoteca is Precio // 2,
+    nb_getval(jugadores, Jugadores),
+    member(Jugador, Jugadores),
+    Jugador = jugador(NombreJugador, _, Dinero, _),
+    !,
+    DineroTras is Dinero + ValorHipoteca,
+    nb_setarg(3, Jugador, DineroTras),
+    nb_getval(hipotecas, H),
+    nb_setval(hipotecas, [NombreProp | H]),
+    format('[Hipoteca] ~w hipoteca ~w y recibe $~w. Dinero: $~w~n',
+           [NombreJugador, NombreProp, ValorHipoteca, DineroTras]).
+
+hipotecar(NombreJugador, NombreProp) :-
+    ( esta_hipotecada(NombreProp) ->
+        format('[Hipoteca] ~w ya esta hipotecada.~n', [NombreProp])
+    ;   obtener_casas(NombreProp, N), N > 0 ->
+        format('[Hipoteca] Debes vender las ~w casas de ~w antes de hipotecar.~n', [N, NombreProp])
+    ;   format('[Hipoteca] ~w no puede hipotecar ~w (no es dueno o propiedad invalida).~n',
+               [NombreJugador, NombreProp])
+    ).
+
+% Levantar hipoteca: el jugador paga el 110% del valor hipotecado
+levantar_hipoteca(NombreJugador, NombreProp) :-
+    esta_hipotecada(NombreProp),
+    props_de_jugador(NombreJugador, Propiedades),
+    member(NombreProp, Propiedades),
+    precio_propiedad(NombreProp, Precio),
+    Coste is (Precio // 2) * 110 // 100,
+    nb_getval(jugadores, Jugadores),
+    member(Jugador, Jugadores),
+    Jugador = jugador(NombreJugador, _, Dinero, _),
+    Dinero >= Coste,
+    !,
+    DineroTras is Dinero - Coste,
+    nb_setarg(3, Jugador, DineroTras),
+    nb_getval(hipotecas, H),
+    delete(H, NombreProp, HTras),
+    nb_setval(hipotecas, HTras),
+    format('[Hipoteca] ~w levanta la hipoteca de ~w pagando $~w. Dinero: $~w~n',
+           [NombreJugador, NombreProp, Coste, DineroTras]).
+
+levantar_hipoteca(_, NombreProp) :-
+    \+ esta_hipotecada(NombreProp),
+    !,
+    format('[Hipoteca] ~w no esta hipotecada.~n', [NombreProp]).
+
+levantar_hipoteca(NombreJugador, NombreProp) :-
+    precio_propiedad(NombreProp, Precio),
+    Coste is (Precio // 2) * 110 // 100,
+    format('[Hipoteca] ~w no tiene fondos para levantar hipoteca de ~w (necesita $~w).~n',
+           [NombreJugador, NombreProp, Coste]).
+
+% --- Regla 3: Bancarrota ---
+comprobar_bancarrota(Jugador) :-
+    Jugador = jugador(NombreJugador, _, Dinero, _),
+    Dinero < 0,
+    !,
+    format('[Regla 3 - Bancarrota] ~w tiene $~w. Intentando liquidar activos...~n',
+           [NombreJugador, Dinero]),
+    liquidar_activos(Jugador),
+    Jugador = jugador(_, _, DineroTrasLiquidacion, _),
+    ( DineroTrasLiquidacion < 0
+    -> format('[Regla 3 - Eliminacion] ~w sigue en negativo ($~w). Eliminado del juego.~n',
+              [NombreJugador, DineroTrasLiquidacion]),
+       eliminar_jugador(NombreJugador)
+    ;  format('[Regla 3 - Recuperado] ~w se salva con $~w tras liquidar.~n',
+              [NombreJugador, DineroTrasLiquidacion])
+    ).
+
+comprobar_bancarrota(_).
+
+% Vende todas las propiedades al 50% de su valor
 liquidar_activos(Jugador) :-
-    Jugador = jugador(Nombre, _, Dinero, Props),
-    calcular_valor_liquidacion(Props, ValorRecuperado),
-    NuevoDinero is Dinero + ValorRecuperado,
-    nb_setarg(3, Jugador, NuevoDinero),
+    Jugador = jugador(NombreJugador, _, Dinero, Propiedades),
+    calcular_valor_liquidacion(Propiedades, ValorRecuperado),
+    DineroTras is Dinero + ValorRecuperado,
+    nb_setarg(3, Jugador, DineroTras),
     nb_setarg(4, Jugador, []),
-    format('[Regla 3 - Liquidacion] ~w vende todas sus propiedades por $~w. Dinero: $~w~n',
-           [Nombre, ValorRecuperado, NuevoDinero]).
+    format('[Regla 3 - Liquidacion] ~w liquida propiedades por $~w. Dinero: $~w~n',
+           [NombreJugador, ValorRecuperado, DineroTras]).
 
-% Suma mitad del precio de cada propiedad
 calcular_valor_liquidacion([], 0).
-
-calcular_valor_liquidacion([Prop|Rest], Total) :-
+calcular_valor_liquidacion([Prop | Resto], Total) :-
     precio_propiedad(Prop, Precio),
-    calcular_valor_liquidacion(Rest, RestTotal),
-    Total is (Precio // 2) + RestTotal.
+    ( esta_hipotecada(Prop) -> ValProp = 0 ; ValProp is Precio // 2 ),
+    calcular_valor_liquidacion(Resto, TotalResto),
+    Total is ValProp + TotalResto.
 
 % Busca el precio de una propiedad en el tablero
-precio_propiedad(Nombre, Precio) :-
-    tablero(T),
-    member(propiedad(Nombre, Precio, _, _), T), !.
+precio_propiedad(NombreProp, Precio) :-
+    tablero(Tablero),
+    member(propiedad(NombreProp, Precio, _, _), Tablero), !.
 
 precio_propiedad(estacion(_), Precio) :-
     precio_estacion(Precio), !.
@@ -109,9 +256,9 @@ precio_propiedad(servicio(_), Precio) :-
 
 precio_propiedad(_, 0).
 
-% Elimina al jugador de la lista global
-eliminar_jugador(Nombre) :-
+% Elimina un jugador de la lista global
+eliminar_jugador(NombreJugador) :-
     nb_getval(jugadores, Jugadores),
-    exclude([J]>>(J = jugador(Nombre, _, _, _)), Jugadores, NuevaLista),
-    nb_setval(jugadores, NuevaLista),
-    format('[Regla 3] ~w ha sido eliminado del juego.~n', [Nombre]).
+    exclude([J]>>(J = jugador(NombreJugador, _, _, _)), Jugadores, JugadoresRestantes),
+    nb_setval(jugadores, JugadoresRestantes),
+    format('[Regla 3] ~w ha sido eliminado del juego.~n', [NombreJugador]).

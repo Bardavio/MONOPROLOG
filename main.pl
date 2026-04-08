@@ -1,155 +1,147 @@
-% PROYECTO MONOPOLY EN PROLOG
-% Motor eficiente O(1) con Estado Global Non-Backtrackable
+% MONOPOLY EN PROLOG (main.pl)
 
 :- [reglas].
+:- [metricas].
 
 % --- Estado global ---
-% Inicializa 6 jugadores con $1500 y turno 0
 iniciar_juego :-
     nb_setval(jugadores, [
         jugador(alice,  0, 1500, []),
         jugador(bob,    0, 1500, []),
-        jugador(alice1, 0, 1500, []),
-        jugador(bob1,   0, 1500, []),
-        jugador(alice2, 0, 1500, []),
-        jugador(bob2,   0, 1500, [])
+        jugador(carter, 0, 1500, []),
+        jugador(dylan,   0, 1500, []),
+        jugador(eloy, 0, 1500, []),
+        jugador(lito,   0, 1500, [])
     ]),
     nb_setval(turno_actual, 0),
+    inicializar_casas,
+    inicializar_hipotecas,
+    inicializar_metricas,
     writeln('================================================'),
-    writeln('¡Partida iniciada con eficiencia maxima (6 jugadores)!'),
-    writeln('Memoria lista. Usa "jugar_turno." para avanzar.'),
-    writeln('Para pruebas, usa los comandos "test_..."'),
+    writeln('Partida iniciada (6 jugadores, $1500 cada uno).'),
+    writeln('Usa "jugar_turno." o "jugar_turnos(N)."'),
     writeln('================================================').
 
-% --- Tablero (40 casillas) ---
-% Lista con las 40 casillas del tablero
+% --- Tablero (40 casillas, indices 0-39) ---
 tablero(Tablero) :-
     Tablero = [
-        casilla(salida,      'Cobras $200 al pasar'),
-        propiedad(marron1,   60,  marron, libre),
-        casilla(carta,       'Carta de Comunidad'),
-        propiedad(marron2,   60,  marron, libre),
-        casilla(impuesto,    200),
-        estacion(norte, libre),
-        propiedad(celeste1,  100, celeste, libre),
-        casilla(chance,      'Carta de Suerte'),
-        propiedad(celeste2,  100, celeste, libre),
-        propiedad(celeste3,  120, celeste, libre),
-        casilla(carcel,      'Solo de visita'),
-        propiedad(rosa1,     140, rosa, libre),
-        servicio(electrica, libre),
-        propiedad(rosa2,     140, rosa, libre),
-        propiedad(rosa3,     160, rosa, libre),
-        estacion(sur, libre),
-        propiedad(naranja1,  180, naranja, libre),
-        casilla(carta,       'Carta de Comunidad'),
-        propiedad(naranja2,  180, naranja, libre),
-        propiedad(naranja3,  200, naranja, libre),
-        casilla(parking,     'Parking gratuito'),
-        propiedad(rojo1,     220, rojo, libre),
-        casilla(chance,      'Carta de Suerte'),
-        propiedad(rojo2,     220, rojo, libre),
-        propiedad(rojo3,     240, rojo, libre),
-        estacion(este, libre),
-        propiedad(amarillo1, 260, amarillo, libre),
-        propiedad(amarillo2, 260, amarillo, libre),
-        servicio(agua, libre),
-        propiedad(amarillo3, 280, amarillo, libre),
-        casilla(ir_a_carcel, 'Ve directamente a la carcel'),
-        propiedad(verde1,    300, verde, libre),
-        propiedad(verde2,    300, verde, libre),
-        casilla(carta,       'Carta de Comunidad'),
-        propiedad(verde3,    320, verde, libre),
-        estacion(oeste, libre),
-        casilla(chance,      'Carta de Suerte'),
-        propiedad(azul1,     350, azul, libre),
-        casilla(impuesto,    100),
-        propiedad(azul2,     400, azul, libre)
+        casilla(salida,      'Cobras $200 al pasar'),   % 0
+        propiedad(marron1,   60,  marron,   libre),      % 1
+        casilla(carta,       'Carta de Comunidad'),      % 2
+        propiedad(marron2,   60,  marron,   libre),      % 3
+        casilla(impuesto,    200),                       % 4
+        estacion(norte,      libre),                     % 5
+        propiedad(celeste1,  100, celeste,  libre),      % 6
+        casilla(chance,      'Carta de Suerte'),         % 7
+        propiedad(celeste2,  100, celeste,  libre),      % 8
+        propiedad(celeste3,  120, celeste,  libre),      % 9
+        casilla(carcel,      'Solo de visita'),          % 10
+        propiedad(rosa1,     140, rosa,     libre),      % 11
+        servicio(electrica,  libre),                     % 12
+        propiedad(rosa2,     140, rosa,     libre),      % 13
+        propiedad(rosa3,     160, rosa,     libre),      % 14
+        estacion(sur,        libre),                     % 15
+        propiedad(naranja1,  180, naranja,  libre),      % 16
+        casilla(carta,       'Carta de Comunidad'),      % 17
+        propiedad(naranja2,  180, naranja,  libre),      % 18
+        propiedad(naranja3,  200, naranja,  libre),      % 19
+        casilla(parking,     'Parking gratuito'),        % 20
+        propiedad(rojo1,     220, rojo,     libre),      % 21
+        casilla(chance,      'Carta de Suerte'),         % 22
+        propiedad(rojo2,     220, rojo,     libre),      % 23
+        propiedad(rojo3,     240, rojo,     libre),      % 24
+        estacion(este,       libre),                     % 25
+        propiedad(amarillo1, 260, amarillo, libre),      % 26
+        propiedad(amarillo2, 260, amarillo, libre),      % 27
+        servicio(agua,       libre),                     % 28
+        propiedad(amarillo3, 280, amarillo, libre),      % 29
+        casilla(ir_a_carcel, 'Ve directamente a la carcel'), % 30
+        propiedad(verde1,    300, verde,    libre),      % 31
+        propiedad(verde2,    300, verde,    libre),      % 32
+        casilla(carta,       'Carta de Comunidad'),      % 33
+        propiedad(verde3,    320, verde,    libre),      % 34
+        estacion(oeste,      libre),                     % 35
+        casilla(chance,      'Carta de Suerte'),         % 36
+        propiedad(azul1,     350, azul,     libre),      % 37
+        casilla(impuesto,    100),                       % 38
+        propiedad(azul2,     400, azul,     libre)       % 39
     ].
 
-longitud_tablero(Len) :-
-    tablero(T),
-    length(T, Len).
-    
-% Devuelve la casilla en el indice dado (0-based)
-casilla_en(Indice, Casilla) :-
-    tablero(T),
-    nth0(Indice, T, Casilla).
 
-% --- Dado doble simulado ---
-% Turno 0 (3 y 3) saca dobles
+longitud_tablero(Longitud) :-
+    tablero(Tablero),
+    length(Tablero, Longitud).
+
+casilla_en(Indice, Casilla) :-
+    tablero(Tablero),
+    nth0(Indice, Tablero, Casilla).
+
+% --- Dados predefinidos (ciclicos) ---
 secuencia_dado1([3, 5, 2, 6, 1, 4, 2, 5, 3, 1, 4, 6, 2, 3, 5, 1, 4, 2, 6, 3]).
 secuencia_dado2([3, 4, 6, 1, 3, 4, 1, 3, 6, 2, 5, 4, 3, 6, 2, 4, 1, 5, 3, 2]).
 
-% Valor del dado 1 en el turno dado (ciclico)
 valor_dado1(Turno, Valor) :-
     secuencia_dado1(Tiradas),
-    length(Tiradas, Len),
-    Idx is Turno mod Len,
-    nth0(Idx, Tiradas, Valor).
+    length(Tiradas, LongSecuencia),
+    Indice is Turno mod LongSecuencia,
+    nth0(Indice, Tiradas, Valor).
 
-% Valor del dado 2 en el turno dado (ciclico)
 valor_dado2(Turno, Valor) :-
     secuencia_dado2(Tiradas),
-    length(Tiradas, Len),
-    Idx is Turno mod Len,
-    nth0(Idx, Tiradas, Valor).
+    length(Tiradas, LongSecuencia),
+    Indice is Turno mod LongSecuencia,
+    nth0(Indice, Tiradas, Valor).
 
-% Suma de ambos dados
 valor_dados(Turno, Total) :-
     valor_dado1(Turno, V1),
     valor_dado2(Turno, V2),
     Total is V1 + V2.
 
-% Cierto si ambos dados son iguales
 es_doble(Turno) :-
-    valor_dado1(Turno, V),
-    valor_dado2(Turno, V).
+    valor_dado1(Turno, Valor),
+    valor_dado2(Turno, Valor).
 
-% --- Movimiento (nb_setarg O(1)) ---
-% Calcula nueva posicion circular (mod 40)
-nueva_posicion(Pos, Tirada, NuevaPos) :-
-    longitud_tablero(Len),
-    NuevaPos is (Pos + Tirada) mod Len.
+% --- Movimiento ---
+nueva_posicion(PosActual, Tirada, PosNueva) :-
+    longitud_tablero(Longitud),
+    PosNueva is (PosActual + Tirada) mod Longitud.
 
-% Cierto si el movimiento cruza la casilla de salida
-pasa_por_salida(Pos, Tirada) :-
-    longitud_tablero(Len),
-    Pos + Tirada >= Len.
+pasa_por_salida(PosActual, Tirada) :-
+    longitud_tablero(Longitud),
+    PosActual + Tirada >= Longitud.
 
-% Mueve con los dados automaticos del turno
 mover_jugador(Jugador, Turno) :-
     valor_dados(Turno, Tirada),
     mover_jugador_con_tirada(Jugador, Tirada).
 
-% Mueve con una tirada manual (para tests)
 mover_jugador_con_tirada(Jugador, Tirada) :-
-    Jugador = jugador(_, Pos, Dinero, _),
-    nueva_posicion(Pos, Tirada, NuevaPos),
-    ( pasa_por_salida(Pos, Tirada)
-    -> NuevoDinero is Dinero + 200
-    ;  NuevoDinero = Dinero
+    Jugador = jugador(_, PosActual, DineroActual, _),
+    nueva_posicion(PosActual, Tirada, PosNueva),
+    ( pasa_por_salida(PosActual, Tirada)
+    -> DineroTras is DineroActual + 200
+    ;  DineroTras = DineroActual
     ),
-    nb_setarg(2, Jugador, NuevaPos),
-    nb_setarg(3, Jugador, NuevoDinero).
-
+    nb_setarg(2, Jugador, PosNueva),
+    nb_setarg(3, Jugador, DineroTras).
 
 % --- Enrutador de casillas ---
-% Abstraccion: calle, estacion o servicio -> comprable generico
-item_comprable(propiedad(Nombre, Precio, Color, _), Nombre, Nombre, Precio, Alquiler) :- 
-    alquiler_color(Color, Alquiler).
+% Unifica con nombre visual, item a guardar, precio y alquiler base
+item_comprable(propiedad(Nombre, Precio, Color, _), Nombre, Nombre, Precio, AlquilerBase) :-
+    alquiler_color(Color, AlquilerBase).
 
-item_comprable(estacion(Nombre, _), Nombre, estacion(Nombre), Precio, Alquiler) :- 
-    precio_estacion(Precio), alquiler(Precio, Alquiler).
+item_comprable(estacion(Nombre, _), Nombre, estacion(Nombre), Precio, AlquilerBase) :-
+    precio_estacion(Precio),
+    alquiler(Precio, AlquilerBase).
 
-item_comprable(servicio(Nombre, _), Nombre, servicio(Nombre), Precio, Alquiler) :- 
-    precio_servicio(Precio), alquiler(Precio, Alquiler).
+item_comprable(servicio(Nombre, _), Nombre, servicio(Nombre), Precio, AlquilerBase) :-
+    precio_servicio(Precio),
+    alquiler(Precio, AlquilerBase).
 
-% Busca dueño en las mochilas de todos los jugadores
-estado_dueno(ItemGuardado, Dueno) :-
+% Busca el dueno de un item en las propiedades de todos los jugadores
+estado_dueno(ItemGuardado, NombreDueno) :-
     nb_getval(jugadores, Jugadores),
-    member(jugador(Dueno, _, _, Props), Jugadores),
-    member(ItemGuardado, Props),
+    member(jugador(NombreDueno, _, _, Propiedades), Jugadores),
+    member(ItemGuardado, Propiedades),
     !.
 
 estado_dueno(_, libre).
@@ -160,94 +152,94 @@ aplicar_casilla(casilla(ir_a_carcel, _), Jugador) :-
 
 aplicar_casilla(casilla(impuesto, Cantidad), Jugador) :-
     Jugador = jugador(_, _, Dinero, _),
-    NuevoDinero is Dinero - Cantidad,
-    nb_setarg(3, Jugador, NuevoDinero),
+    DineroTras is Dinero - Cantidad,
+    nb_setarg(3, Jugador, DineroTras),
     comprobar_bancarrota(Jugador), !.
 
-% Enrutador principal: compra o alquiler
+% Enrutador principal: compra si libre, alquiler si tiene dueno ajeno
 aplicar_casilla(Casilla, Jugador) :-
-    item_comprable(Casilla, NombreVisual, ItemGuardado, Precio, Alquiler),
-    estado_dueno(ItemGuardado, Dueno),
-    Jugador = jugador(NombreJ, _, _, _),
-    
-    ( Dueno == libre ->
+    item_comprable(Casilla, NombreVisual, ItemGuardado, Precio, AlquilerBase),
+    estado_dueno(ItemGuardado, NombreDueno),
+    Jugador = jugador(NombreJugador, _, _, _),
+    ( NombreDueno == libre ->
         regla_0_compra(Jugador, NombreVisual, ItemGuardado, Precio)
-    ; Dueno \== NombreJ ->
-        regla_1_alquiler(Jugador, NombreVisual, Dueno, Alquiler),
-        comprobar_bancarrota(Jugador)
+    ; NombreDueno \== NombreJugador ->
+        ( esta_hipotecada(ItemGuardado) ->
+            format('[Hipoteca] ~w esta hipotecada, no se cobra alquiler.~n', [ItemGuardado])
+        ;   regla_1_alquiler(Jugador, NombreVisual, ItemGuardado, NombreDueno, AlquilerBase),
+            comprobar_bancarrota(Jugador)
+        )
     ; true
     ),
     !.
 
-% Catch-all: casillas sin efecto
 aplicar_casilla(_, _).
 
 % --- Control de turno ---
-% Ejecuta un turno completo: mover + aplicar casilla + log
-ejecutar_turno(Idx, Turno) :-
+ejecutar_turno(IndiceJugador, Turno) :-
     nb_getval(jugadores, Jugadores),
-    nth0(Idx, Jugadores, JugadorActual),
-    JugadorActual = jugador(Nombre, _, _, _),
-    mover_jugador(JugadorActual, Turno),
-    JugadorActual = jugador(_, NuevaPos, _, _),
-    casilla_en(NuevaPos, Casilla),
-    aplicar_casilla(Casilla, JugadorActual),
+    nth0(IndiceJugador, Jugadores, Jugador),
+    Jugador = jugador(NombreJugador, _, _, _),
+    mover_jugador(Jugador, Turno),
+    Jugador = jugador(_, PosNueva, _, _),
+    casilla_en(PosNueva, Casilla),
+    aplicar_casilla(Casilla, Jugador),
     valor_dados(Turno, Tirada),
     format('~n--- TURNO ~w ---~n', [Turno]),
-    format('Juega: ~w. Saca un ~w en los dados.~n', [Nombre, Tirada]),
-    format('Cae en la posicion ~w: ~w~n', [NuevaPos, Casilla]),
-    format('Estado final del jugador: ~w~n', [JugadorActual]).
+    format('Juega: ~w | Tirada: ~w | Pos: ~w (~w)~n', [NombreJugador, Tirada, PosNueva, Casilla]),
+    format('Estado: ~w~n', [Jugador]).
 
-% Juega un turno (con turno extra si saca doble)
 jugar_turno :-
     nb_getval(turno_actual, Turno),
     nb_getval(jugadores, Jugadores),
-    length(Jugadores, N),
-    Idx is Turno mod N,
-    ejecutar_turno(Idx, Turno),
-    NuevoTurno is Turno + 1,
-    nb_setval(turno_actual, NuevoTurno),
+    length(Jugadores, NumJugadores),
+    IndiceJugador is Turno mod NumJugadores,
+    ejecutar_turno(IndiceJugador, Turno),
+    TurnoSiguiente is Turno + 1,
+    nb_setval(turno_actual, TurnoSiguiente),
+    % Turno extra si saca dobles
     ( es_doble(Turno)
-    -> nb_getval(turno_actual, Turno2),
-       nth0(Idx, Jugadores, J),
-       J = jugador(NombreJ, _, _, _),
-       format('[Doble] ~w saca doble, juega de nuevo!~n', [NombreJ]),
-       ejecutar_turno(Idx, Turno2),
-       NuevoTurno2 is Turno2 + 1,
-       nb_setval(turno_actual, NuevoTurno2)
+    -> nth0(IndiceJugador, Jugadores, Jugador),
+       Jugador = jugador(NombreJugador, _, _, _),
+       format('[Doble] ~w lanza de nuevo!~n', [NombreJugador]),
+       ejecutar_turno(IndiceJugador, TurnoSiguiente),
+       TurnoTrasDoble is TurnoSiguiente + 1,
+       nb_setval(turno_actual, TurnoTrasDoble)
     ;  true
-    ).
+    ),
+    registrar_estado_turno,
+    detectar_estancamiento.
 
-% Juega N turnos consecutivos
 jugar_turnos(0) :- !.
 jugar_turnos(N) :-
-    N > 0, jugar_turno, N1 is N - 1, jugar_turnos(N1).
+    N > 0,
+    jugar_turno,
+    N1 is N - 1,
+    jugar_turnos(N1).
 
 % --- Consultas globales ---
-% Lista de propiedades de un jugador
-props_de_jugador(Nombre, Props) :-
+props_de_jugador(NombreJugador, Propiedades) :-
     nb_getval(jugadores, Jugadores),
-    member(jugador(Nombre, _, _, Props), Jugadores).
+    member(jugador(NombreJugador, _, _, Propiedades), Jugadores).
 
-% Solo propiedades (sin estaciones ni servicios)
-propiedades_de_dueno(Dueno, Lista) :-
+propiedades_de_dueno(NombreDueno, SoloPropiedades) :-
     nb_getval(jugadores, Jugadores),
-    member(jugador(Dueno, _, _, Props), Jugadores),
-    include([X]>>(X \= estacion(_), X \= servicio(_)), Props, Lista).
+    member(jugador(NombreDueno, _, _, TodasProps), Jugadores),
+    % Como Propiedad no tiene clausula tenemos que filtrar por exclusion en vez de por inclusion
+    % TODO: Añadir una clausula a Propiedad ?
+    include([X]>>(X \= estacion(_), X \= servicio(_)), TodasProps, SoloPropiedades).
 
-% Lista de estaciones de un jugador
-estaciones_de_dueno(Dueno, Lista) :-
+estaciones_de_dueno(NombreDueno, ListaEstaciones) :-
     nb_getval(jugadores, Jugadores),
-    member(jugador(Dueno, _, _, Props), Jugadores),
-    findall(N, member(estacion(N), Props), Lista).
+    member(jugador(NombreDueno, _, _, Propiedades), Jugadores),
+    findall(Nombre, member(estacion(Nombre), Propiedades), ListaEstaciones).
 
-% Lista de servicios de un jugador
-servicios_de_dueno(Dueno, Lista) :-
+servicios_de_dueno(NombreDueno, ListaServicios) :-
     nb_getval(jugadores, Jugadores),
-    member(jugador(Dueno, _, _, Props), Jugadores),
-    findall(N, member(servicio(N), Props), Lista).
+    member(jugador(NombreDueno, _, _, Propiedades), Jugadores),
+    findall(Nombre, member(servicio(Nombre), Propiedades), ListaServicios).
 
-% Valores base
+% --- Valores base del tablero ---
 alquiler_color(marron,    2).
 alquiler_color(celeste,   6).
 alquiler_color(rosa,     10).
@@ -257,38 +249,169 @@ alquiler_color(amarillo, 22).
 alquiler_color(verde,    26).
 alquiler_color(azul,     50).
 
-precio_estacion(200).   % Precio fijo de estaciones
-precio_servicio(150).   % Precio fijo de servicios
-alquiler(Precio, Alquiler) :- Alquiler is Precio // 10. % 10% del precio
+precio_estacion(200).
+precio_servicio(150).
 
-% Cierto si nadie posee esa propiedad
-propiedad_libre(Nombre) :-
+% Alquiler de 10% (estaciones y servicios)
+alquiler(Precio, AlquilerBase) :- AlquilerBase is Precio // 10.
+
+propiedad_libre(NombreProp) :-
     nb_getval(jugadores, Jugadores),
-    \+ (member(jugador(_, _, _, Props), Jugadores), member(Nombre, Props)).
+    \+ (member(jugador(_, _, _, Propiedades), Jugadores), member(NombreProp, Propiedades)).
 
-% Busca el jugador dueño de una propiedad
-dueno_de(Nombre, JugadorDueno) :-
-    nb_getval(jugadores, Jugadores),
-    member(JugadorDueno, Jugadores),
-    JugadorDueno = jugador(_, _, _, Props),
-    member(Nombre, Props).
-
-% Busca el jugador dueño de una estacion
-dueno_estacion(Nombre, JugadorDueno) :-
+dueno_de(NombreProp, JugadorDueno) :-
     nb_getval(jugadores, Jugadores),
     member(JugadorDueno, Jugadores),
-    JugadorDueno = jugador(_, _, _, Props),
-    member(estacion(Nombre), Props).
+    JugadorDueno = jugador(_, _, _, Propiedades),
+    member(NombreProp, Propiedades).
 
-% Busca el jugador dueño de un servicio
-dueno_servicio(Nombre, JugadorDueno) :-
+dueno_estacion(NombreEstacion, JugadorDueno) :-
     nb_getval(jugadores, Jugadores),
     member(JugadorDueno, Jugadores),
-    JugadorDueno = jugador(_, _, _, Props),
-    member(servicio(Nombre), Props).
+    JugadorDueno = jugador(_, _, _, Propiedades),
+    member(estacion(NombreEstacion), Propiedades).
 
-% Cierto si todos los elementos de la primera lista estan en la segunda
+dueno_servicio(NombreServicio, JugadorDueno) :-
+    nb_getval(jugadores, Jugadores),
+    member(JugadorDueno, Jugadores),
+    JugadorDueno = jugador(_, _, _, Propiedades),
+    member(servicio(NombreServicio), Propiedades).
+
 subset_lista([], _).
-subset_lista([X|Xs], Lista) :-
+subset_lista([X | Xs], Lista) :-
     member(X, Lista),
     subset_lista(Xs, Lista).
+
+% --- Interfaz ASCII del tablero ---
+
+% Rellena o trunca un atom a exactamente N caracteres (relleno con espacios por la derecha)
+atom_fijo(Atom, N, Resultado) :-
+    format(atom(A), '~w', [Atom]),
+    atom_length(A, L),
+    ( L >= N ->
+        sub_atom(A, 0, N, _, Resultado)
+    ;
+        Diff is N - L,
+        length(EspaciosLista, Diff),
+        maplist(=(' '), EspaciosLista),
+        atom_chars(Relleno, EspaciosLista),
+        atom_concat(A, Relleno, Resultado)
+    ).
+
+% Nombre de la casilla en exactamente 7 caracteres
+nombre_casilla_7(casilla(salida,      _), 'SALIDA ').
+nombre_casilla_7(casilla(carta,       _), 'CARTA  ').
+nombre_casilla_7(casilla(chance,      _), 'SUERTE ').
+nombre_casilla_7(casilla(impuesto,    _), 'IMPUEST').
+nombre_casilla_7(casilla(carcel,      _), 'CARCEL ').
+nombre_casilla_7(casilla(parking,     _), 'PARKING').
+nombre_casilla_7(casilla(ir_a_carcel, _), 'IRCARCL').
+nombre_casilla_7(propiedad(N, _, _, _), R) :- atom_fijo(N, 7, R).
+nombre_casilla_7(estacion(N, _), R)  :- atom_concat('E.', N, A), atom_fijo(A, 7, R).
+nombre_casilla_7(servicio(N, _), R)  :- atom_concat('S.', N, A), atom_fijo(A, 7, R).
+
+% Inicial del dueno: letra si tiene dueno, '.' si libre, ' ' si la casilla no es comprable
+char_dueno(Casilla, C) :-
+    ( item_comprable(Casilla, _, Item, _, _) ->
+        ( estado_dueno(Item, Dueno), Dueno \== libre ->
+            atom_chars(Dueno, [C | _])
+        ;   C = '.'
+        )
+    ;   C = ' '
+    ).
+
+% Caracter de casas: digito 1-4 si hay casas, espacio en otro caso
+char_casas(Casilla, C) :-
+    ( item_comprable(Casilla, _, Item, _, _), atom(Item),
+      obtener_casas(Item, N), N > 0 ->
+        Code is 48 + N, char_code(C, Code)   % '0' = 48, '1' = 49, '2' = 50, ...
+    ;   C = ' '
+    ).
+
+% Caracter de jugador: inicial del jugador si esta en la casilla, espacio si no
+char_jugador(Indice, C) :-
+    nb_getval(jugadores, Jugadores),
+    findall(N, member(jugador(N, Indice, _, _), Jugadores), EnCasilla),
+    ( EnCasilla = []      -> C = ' '
+    ; EnCasilla = [J | _] -> atom_chars(J, [C | _])
+    ).
+
+% Construye la cadena de una celda: exactamente 14 chars
+% Formato: [NAME7 DH J]  ->  1+7+1+1+1+1+1+1 = 14
+celda(Indice, CeldaStr) :-
+    casilla_en(Indice, Casilla),
+    nombre_casilla_7(Casilla, Nombre7),
+    char_dueno(Casilla, CD),
+    char_casas(Casilla, CH),
+    char_jugador(Indice, CJ),
+    format(atom(CeldaStr), '[~w ~w~w ~w]', [Nombre7, CD, CH, CJ]).
+
+imprimir_fila([]).
+imprimir_fila([Indice | Resto]) :-
+    celda(Indice, S),
+    write(S),
+    imprimir_fila(Resto).
+
+% Calcula la anchura total de una fila (11 celdas de 14 chars = 154)
+anchura_fila(154).
+
+mostrar_tablero :-
+    anchura_fila(W),
+    SepW is W + 2,
+    writeln(''),
+    sep_linea(SepW),
+    writeln('           TABLERO DE MONOPOLY'),
+    sep_linea(SepW),
+    % Fila superior: casillas 30 -> 20 (der a izq)
+    numlist(20, 30, FilaTopAsc),
+    reverse(FilaTopAsc, FilaTop),
+    imprimir_fila(FilaTop), nl,
+    sep_linea(SepW),
+    % Columnas laterales: izquierda 39..31, derecha 11..19
+    mostrar_filas_medio(39, 31, 11, 19),
+    sep_linea(SepW),
+    % Fila inferior: casillas 0 -> 10
+    numlist(0, 10, FilaBot),
+    imprimir_fila(FilaBot), nl,
+    sep_linea(SepW),
+    writeln('  Leyenda: D=dueno  H=casas(1-4)  J=jugador  .=libre  _=sin efecto'),
+    nl.
+
+% Imprime una linea separadora de N guiones
+sep_linea(N) :-
+    length(Lista, N),
+    maplist(=('-'), Lista),
+    atom_chars(Sep, Lista),
+    writeln(Sep).
+
+% Fila del medio: celda izquierda, espacio hasta col ColDer, celda derecha
+% Cada celda = 14 chars, 11 celdas = 154 chars, col derecha empieza en 140
+mostrar_filas_medio(IndiceIzq, LimIzq, IndiceDer, LimDer) :-
+    IndiceIzq >= LimIzq,
+    IndiceDer =< LimDer,
+    !,
+    celda(IndiceIzq, CeldaIzq),
+    celda(IndiceDer, CeldaDer),
+    format('~w~t~140|~w~n', [CeldaIzq, CeldaDer]),
+    IndiceIzqSig is IndiceIzq - 1,
+    IndiceDerSig is IndiceDer + 1,
+    mostrar_filas_medio(IndiceIzqSig, LimIzq, IndiceDerSig, LimDer).
+mostrar_filas_medio(_, _, _, _).
+
+mostrar_estado :-
+    writeln(''),
+    writeln('============= ESTADO DEL JUEGO ============='),
+    nb_getval(jugadores, Jugadores),
+    nb_getval(turno_actual, Turno),
+    format('Turno actual: ~w~n', [Turno]),
+    writeln('--------------------------------------------'),
+    maplist(mostrar_jugador_estado, Jugadores),
+    writeln('============================================'),
+    nl.
+
+mostrar_jugador_estado(jugador(Nombre, Pos, Dinero, Propiedades)) :-
+    casilla_en(Pos, Casilla),
+    nombre_casilla_7(Casilla, NomCasilla),
+    length(Propiedades, NumPropiedades),
+    format('~w: $~w | Pos ~w (~w) | ~w propiedades~n',
+           [Nombre, Dinero, Pos, NomCasilla, NumPropiedades]).
