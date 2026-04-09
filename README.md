@@ -271,3 +271,27 @@ escenario_monopolios_cruzados.
 % Escenario 10: Hipotecas completo
 escenario_hipotecas.
 ```
+
+## Simulacion manual
+% forzar bancarrota
+test_dinero(alice, -10).
+
+% Bancarrota manual con la variable global ALICE 
+nb_getval(jugadores, Jugadores),
+member(J, Jugadores),
+arg(1, J, alice),
+comprobar_bancarrota(J).
+
+% monopolio manual
+iniciar_juego,
+test_dar_propiedad(alice, marron1),
+test_dar_propiedad(alice, marron2),
+comprobar_monopolios_jugador(alice).
+
+% ver y cambiar casas
+obtener_casas(marron1,N).
+set_casas(marron1, 0). %cambiar el num de casas a 0
+construir_casa(alice, marron2).
+hipotecar(alice, marron2). %vender casas
+hipotecar(alice, marron1).
+levantar_hipoteca(alice,marron1). %110 por ciento
