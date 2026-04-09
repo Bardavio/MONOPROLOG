@@ -42,6 +42,7 @@ alquiler_efectivo(ItemGuardado, AlquilerBase, NombreDueno, AlquilerFinal) :-
     obtener_casas(ItemGuardado, NumCasas),
     ( NumCasas =:= 0 ->
         ( tiene_monopolio(NombreDueno, Color) ->
+         % Sin casas + Monopolio: alquiler se duplica
             AlquilerFinal is AlquilerBase * 2
         ;   AlquilerFinal = AlquilerBase
         )
@@ -106,6 +107,7 @@ construir_casa(NombreJugador, NombreProp) :-
     tablero(Tablero),
     member(propiedad(NombreProp, _, Color, _), Tablero),
     tiene_monopolio(NombreJugador, Color),
+     \+ esta_hipotecada(NombreProp),
     obtener_casas(NombreProp, CasasActuales),
     CasasActuales < 4,
     coste_casa(Color, CosteCasa),
