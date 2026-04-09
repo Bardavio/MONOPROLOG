@@ -85,8 +85,11 @@ inicializar_casas :-
 % Devuelve el numero de casas en una propiedad (0 si no hay registro)
 obtener_casas(NombreProp, NumCasas) :-
     nb_getval(casas, ListaCasas),
-    ( member(casas(NombreProp, NumCasas), ListaCasas) -> true ; NumCasas = 0 ).
-
+    ( member(casas(NombreProp, N), ListaCasas) -> 
+        NumCasas = N 
+    ; 
+        NumCasas = 0 
+    ).
 % Actualiza el numero de casas de una propiedad en el estado global
 set_casas(NombreProp, NumCasas) :-
     nb_getval(casas, ListaCasas),
